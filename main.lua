@@ -62,7 +62,54 @@ local function AddHighlight(highlight)
     return highlight
 end
 
-
+local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
+    local r, g, b = defaultColor.R * 255, defaultColor.G * 255, defaultColor.B * 255
+    
+    local rSlider = groupbox:AddSlider(name .. "_R", {
+        Text = name .. " (Red)",
+        Min = 0,
+        Max = 255,
+        Default = r,
+        Rounding = 0,
+        Callback = function(val)
+            r = val
+            callback(Color3.fromRGB(r, g, b))
+        end
+    })
+    
+    local gSlider = groupbox:AddSlider(name .. "_G", {
+        Text = name .. " (Green)",
+        Min = 0,
+        Max = 255,
+        Default = g,
+        Rounding = 0,
+        Callback = function(val)
+            g = val
+            callback(Color3.fromRGB(r, g, b))
+        end
+    })
+    
+    local bSlider = groupbox:AddSlider(name .. "_B", {
+        Text = name .. " (Blue)",
+        Min = 0,
+        Max = 255,
+        Default = b,
+        Rounding = 0,
+        Callback = function(val)
+            b = val
+            callback(Color3.fromRGB(r, g, b))
+        end
+    })
+    
+    return {
+        SetValue = function(newColor)
+            r, g, b = newColor.R * 255, newColor.G * 255, newColor.B * 255
+            rSlider:SetValue(r)
+            gSlider:SetValue(g)
+            bSlider:SetValue(b)
+        end
+    }
+end
 
 local Aimbot = {
     Enabled = false,
@@ -71,8 +118,8 @@ local Aimbot = {
     Smoothing = 0.1,
     AimNPC = true,
     ShowFOV = true,
-    FOVColor = Color3.fromRGB(255, 128, 128)
-
+    FOVColor = Color3.fromRGB(255, 128, 128),
+    Key = Enum.UserInputType.MouseButton2
 }
 
 local AimbotCache = {
@@ -280,14 +327,7 @@ AddConnection(Players.PlayerAdded:Connect(function(plr)
 end))
 
 local Fullbright = {
-    Enabled = false,
-    AmbientColor = Color3.new(1, 1, 1),
-    OutdoorAmbientColor = Color3.new(1, 1, 1)
-}
-
-local CustomTime = {
-    Enabled = false,
-    TimeOfDay = 12
+    Enabled = false
 }
 
 local OriginalLighting = nil
@@ -310,31 +350,13 @@ local function ApplyFullbright()
     end
 
     Lighting.Brightness = 0
-    Lighting.Ambient = Fullbright.AmbientColor
-    Lighting.OutdoorAmbient = Fullbright.OutdoorAmbientColor
+    Lighting.Ambient = Color3.new(1, 1, 1)
+    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 1e10
     Lighting.ClockTime = 12
     Lighting.GeographicLatitude = 0
     Lighting.Technology = Enum.Technology.ShadowMap
-end
-
-local function ApplyCustomTime()
-    if not ScriptEnabled then return end
-    if not CustomTime.Enabled then return end
-    Lighting.ClockTime = CustomTime.TimeOfDay
-end
-
-local function SetCustomTimeEnabled(state)
-    CustomTime.Enabled = state
-    if state then
-        ApplyCustomTime()
-    else
-        -- Revert to original clock time if custom time is disabled and fullbright is not enabled
-        if not Fullbright.Enabled and OriginalLighting then
-            Lighting.ClockTime = OriginalLighting.ClockTime
-        end
-    end
 end
 
 local function SetFullbrightEnabled(state)
@@ -357,9 +379,7 @@ local function SetFullbrightEnabled(state)
             Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
             Lighting.GlobalShadows = OriginalLighting.GlobalShadows
             Lighting.FogEnd = OriginalLighting.FogEnd
-            if not CustomTime.Enabled then
-                Lighting.ClockTime = OriginalLighting.ClockTime
-            end
+            Lighting.ClockTime = OriginalLighting.ClockTime
             Lighting.GeographicLatitude = OriginalLighting.GeographicLatitude
             Lighting.Technology = OriginalLighting.Technology
         end
@@ -372,7 +392,8 @@ local HRP = Character:WaitForChild("HumanoidRootPart")
 
 local Fly = {
     Enabled = false,
-    Speed = 80
+    Speed = 80,
+    Key = Enum.KeyCode.B
 }
 
 local flying = false
@@ -624,22 +645,9 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     end
 })
 
-AddColorPicker(AimbotSettings, "FOV Color", {
-    Text = "FOV Color",
-    Default = Aimbot.FOVColor,
-    Callback = function(value)
-        Aimbot.FOVColor = value
-    end
-})
-
-AimbotSettings:AddKeybinder("AimbotKey", {
-    Text = "Aimbot Key",
-    Default = Aimbot.Key,
-    Mode = "hold",
-    Callback = function(key, mode)
-        Aimbot.Key = key
-    end
-})
+AddColorPickerAlternative(AimbotSettings, "FOV Color", Aimbot.FOVColor, function(value)
+    Aimbot.FOVColor = value
+end)
 
 local VisualsTab = Window:AddTab("Visuals")
 
@@ -683,13 +691,9 @@ ChamsGroup:AddSlider("ChamsTransparency", {
     end
 })
 
-AddColorPicker(ChamsGroup, "Chams Color", {
-    Text = "Chams Color",
-    Default = Chams.Color,
-    Callback = function(value)
-        Chams.Color = value
-    end
-})
+AddColorPickerAlternative(ChamsGroup, "Chams Color", Chams.Color, function(value)
+    Chams.Color = value
+end)
 
 local WorldGroup = VisualsTab:AddGroupbox({
     Name = "World",
@@ -704,50 +708,6 @@ WorldGroup:AddToggle("FullbrightEnabled", {
     end
 })
 
-WorldGroup:AddColorPicker("FullbrightAmbientColor", {
-    Text = "Ambient Color",
-    Default = Fullbright.AmbientColor,
-    Callback = function(value)
-        Fullbright.AmbientColor = value
-        if Fullbright.Enabled then
-            ApplyFullbright()
-        end
-    end
-})
-
-WorldGroup:AddColorPicker("FullbrightOutdoorAmbientColor", {
-    Text = "Outdoor Ambient Color",
-    Default = Fullbright.OutdoorAmbientColor,
-    Callback = function(value)
-        Fullbright.OutdoorAmbientColor = value
-        if Fullbright.Enabled then
-            ApplyFullbright()
-        end
-    end
-})
-
-WorldGroup:AddToggle("CustomTimeEnabled", {
-    Text = "Custom Time",
-    Default = false,
-    Callback = function(value)
-        SetCustomTimeEnabled(value)
-    end
-})
-
-WorldGroup:AddSlider("CustomTimeOfDay", {
-    Text = "Time of Day",
-    Min = 0,
-    Max = 24,
-    Default = 12,
-    Rounding = 0,
-    Callback = function(value)
-        CustomTime.TimeOfDay = value
-        if CustomTime.Enabled then
-            ApplyCustomTime()
-        end
-    end
-})
-
 local MiscTab = Window:AddTab("Misc")
 
 local FlyGroup = MiscTab:AddGroupbox({
@@ -756,7 +716,7 @@ local FlyGroup = MiscTab:AddGroupbox({
 })
 
 FlyGroup:AddToggle("puzo exploit", {
-    Text = "Enabled",
+    Text = "Enabled (Press B)",
     Default = false,
     Callback = function(value)
         if value then
@@ -764,15 +724,6 @@ FlyGroup:AddToggle("puzo exploit", {
         else
             stopFly(true)
         end
-    end
-})
-
-FlyGroup:AddKeybinder("FlyKey", {
-    Text = "Fly Key",
-    Default = Fly.Key,
-    Mode = "toggle",
-    Callback = function(key, mode)
-        Fly.Key = key
     end
 })
 
@@ -793,8 +744,6 @@ local UnloadGroup = SettingsTab:AddGroupbox({
     Name = "Script Control",
     Side = 1
 })
-
-local UnloadKey = Enum.KeyCode.Delete
 
 UnloadGroup:AddButton("Unload Script", function()
     ScriptEnabled = false
@@ -836,16 +785,7 @@ UnloadGroup:AddButton("Unload Script", function()
     getgenv().Options = nil
 end)
 
-UnloadGroup:AddKeybinder("UnloadScriptKey", {
-    Text = "Unload Key",
-    Default = UnloadKey,
-    Mode = "hold",
-    Callback = function(key, mode)
-        UnloadKey = key
-    end
-})
-
-
+UnloadGroup:AddLabel("Hotkey: Delete to unload")
 
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
@@ -859,7 +799,7 @@ ThemeManager:SetFolder("PuzoExploit/theme")
 ThemeManager:ApplyToTab(SettingsTab)
 
 AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == UnloadKey then
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.Delete then
         if Library and Library.ScreenGui then
             Library.ScreenGui:Destroy()
         end
