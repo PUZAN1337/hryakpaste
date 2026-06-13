@@ -133,6 +133,7 @@ local Aimbot = {
     FOVColor = Color3.fromRGB(255, 255, 255),
     Key = Enum.UserInputType.MouseButton2,
     PreferredHitbox = "Head",
+    AimMethod = "Camera",
 }
 
 local AimbotCache = {
@@ -198,12 +199,25 @@ end
 local AimbotHitboxNames = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso" }
 local MaterialNames = {}
 do
-    for _, material in ipairs(Enum.Material:GetEnumItems()) do
-        table.insert(MaterialNames, material.Name)
+    MaterialNames = { "ForceField", "Foil", "Glass", "Ice", "Metal" }
+end
+
+local function GetMouseMoveRelFunction()
+    local env = getgenv and getgenv() or _G
+    local candidates = {
+        env and env.mousemoverel or nil,
+        env and env.MouseMoveRel or nil,
+        rawget(env or {}, "mousemoverel"),
+        rawget(env or {}, "MouseMoveRel"),
+        mousemoverel,
+        MouseMoveRel,
+    }
+    for _, fn in ipairs(candidates) do
+        if typeof(fn) == "function" then
+            return fn
+        end
     end
-    table.sort(MaterialNames, function(a, b)
-        return a < b
-    end)
+    return nil
 end
 
 local function IsPartVisible(targetCharacter, part)
@@ -325,8 +339,27 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     if pressed then
         local _, aimPart = GetBestTarget()
         if aimPart then
-            local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
-            Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
+            if Aimbot.AimMethod == "MouseMoveRel" then
+                local moverel = GetMouseMoveRelFunction()
+                if moverel then
+                    local screenPos, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
+                    if onScreen and screenPos.Z > 0 then
+                        local delta = Vector2.new(screenPos.X, screenPos.Y) - center
+                        local factor = math.clamp(Aimbot.Smoothing, 0.01, 1)
+                        local dx = math.floor(delta.X * factor)
+                        local dy = math.floor(delta.Y * factor)
+                        if dx ~= 0 or dy ~= 0 then
+                            pcall(moverel, dx, dy)
+                        end
+                    end
+                else
+                    local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
+                    Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
+                end
+            else
+                local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
+                Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
+            end
         end
     end
 end))
@@ -342,8 +375,8 @@ local Chams = {
     Wallhack = true,
     TeamColor = false,
     ApplyMaterial = true,
-    Material = Enum.Material.Neon,
-    MaterialName = "Neon",
+    Material = Enum.Material.ForceField,
+    MaterialName = "ForceField",
 }
 
 local ChamsConnection = nil
@@ -584,6 +617,7 @@ local HRP = Character:WaitForChild("HumanoidRootPart")
 local Fly = {
     Enabled = false,
     Speed = 80,
+    TeleportMode = true,
 }
 
 local flying = false
@@ -597,6 +631,9 @@ local blueGhost = nil
 local yellowGhost = nil
 local lastTeleportPos = nil
 local lastTeleportTick = 0
+local flyBodyVelocity = nil
+local flyBodyGyro = nil
+local flyNoclipTracked = nil
 local FlyToggleControl = nil
 local FlyBind = nil
 local FlyTeleportBind = nil
@@ -648,6 +685,7 @@ local function RestoreHitboxesForCharacter(character)
         if part and part.Parent then
             part.Size = original.Size
             part.CanCollide = original.CanCollide
+            part.CanTouch = original.CanTouch
             part.Massless = original.Massless
         end
     end
@@ -672,6 +710,7 @@ local function ApplyHitboxesForCharacter(character)
                     tracked[part] = {
                         Size = part.Size,
                         CanCollide = part.CanCollide,
+                        CanTouch = part.CanTouch,
                         Massless = part.Massless,
                     }
                     original = tracked[part]
@@ -679,12 +718,14 @@ local function ApplyHitboxesForCharacter(character)
 
                 part.Size = original.Size * HitboxExpander.Scale
                 part.CanCollide = false
-                part.Massless = true
+                part.CanTouch = false
+                part.Massless = original.Massless
             else
                 local original = tracked[part]
                 if original then
                     part.Size = original.Size
                     part.CanCollide = original.CanCollide
+                    part.CanTouch = original.CanTouch
                     part.Massless = original.Massless
                     tracked[part] = nil
                 end
@@ -812,49 +853,127 @@ local function destroyGhosts()
     if yellowGhost then yellowGhost:Destroy(); yellowGhost = nil end
 end
 
-local function teleportToPosition(pos)
-    if not Character or not HRP then return end
-    if flying then
-        flying = false
-        Fly.Enabled = false
-        HRP.Anchored = false
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-        destroyGhosts()
+local function SetCharacterNoclipEnabled(state)
+    if not Character then
+        return
+    end
+
+    if state then
+        if flyNoclipTracked then
+            return
+        end
+        flyNoclipTracked = {}
+        for _, obj in ipairs(Character:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                flyNoclipTracked[obj] = {
+                    CanCollide = obj.CanCollide,
+                    CanTouch = obj.CanTouch,
+                }
+                obj.CanCollide = false
+                obj.CanTouch = false
+            end
+        end
+        return
+    end
+
+    if not flyNoclipTracked then
+        return
+    end
+    for part, original in pairs(flyNoclipTracked) do
+        if part and part.Parent then
+            part.CanCollide = original.CanCollide
+            part.CanTouch = original.CanTouch
+        end
+    end
+    flyNoclipTracked = nil
+end
+
+local function SetupPhysicsFly()
+    if not HRP then
+        return
+    end
+
+    if flyBodyVelocity then
+        flyBodyVelocity:Destroy()
+        flyBodyVelocity = nil
+    end
+    if flyBodyGyro then
+        flyBodyGyro:Destroy()
+        flyBodyGyro = nil
+    end
+
+    flyBodyVelocity = Instance.new("BodyVelocity")
+    flyBodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    flyBodyVelocity.P = 12500
+    flyBodyVelocity.Velocity = Vector3.zero
+    flyBodyVelocity.Parent = HRP
+
+    flyBodyGyro = Instance.new("BodyGyro")
+    flyBodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    flyBodyGyro.P = 4500
+    flyBodyGyro.CFrame = Camera.CFrame
+    flyBodyGyro.Parent = HRP
+end
+
+local function TeardownPhysicsFly()
+    if flyBodyVelocity then
+        flyBodyVelocity:Destroy()
+        flyBodyVelocity = nil
+    end
+    if flyBodyGyro then
+        flyBodyGyro:Destroy()
+        flyBodyGyro = nil
+    end
+end
+
+local function TeleportCharacterTo(pos)
+    if not Character or not HRP or not pos then
+        return
     end
     HRP.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-    HRP.Velocity = Vector3.zero
+    HRP.AssemblyLinearVelocity = Vector3.zero
+    HRP.AssemblyAngularVelocity = Vector3.zero
 end
 
 local function startFly()
     if flying then return end
     destroyGhosts()
-    blueGhost = createGhost("Blue", HRP.Position)
     flying = true
     Fly.Enabled = true
-    HRP.Anchored = true
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+
+    if Fly.TeleportMode then
+        blueGhost = createGhost("Blue", HRP.Position)
+        HRP.Anchored = true
+    else
+        HRP.Anchored = false
+        SetupPhysicsFly()
+        SetCharacterNoclipEnabled(true)
+    end
 end
 
 local function stopFly(teleportToYellow)
     if not flying then return end
-    if teleportToYellow and lastTeleportPos then
-        teleportToPosition(lastTeleportPos)
-    end
     destroyGhosts()
     HRP.Anchored = false
+    TeardownPhysicsFly()
+    SetCharacterNoclipEnabled(false)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
     flying = false
     Fly.Enabled = false
+
+    if teleportToYellow and lastTeleportPos then
+        TeleportCharacterTo(lastTeleportPos)
+    end
 end
 
 local function placeYellowGhostAtMouse(input)
     if not flying then return end
+    if not Fly.TeleportMode then return end
     local camera = Camera
     local mousePos = input.Position
     local ray = camera:ScreenPointToRay(mousePos.X, mousePos.Y)
@@ -895,7 +1014,7 @@ AddConnection(UserInputService.InputEnded:Connect(function(input, gameProcessed)
     end
 end))
 
-AddConnection(RunService.RenderStepped:Connect(function()
+AddConnection(RunService.RenderStepped:Connect(function(dt)
     if not ScriptEnabled then return end
     if FlyToggleControl and FlyBind and FlyBind.GetState and FlyBind.Mode == "Hold" then
         local desired = FlyBind:GetState()
@@ -904,11 +1023,11 @@ AddConnection(RunService.RenderStepped:Connect(function()
         end
     end
 
-    if FlyTeleportBind and FlyTeleportBind.GetState and FlyTeleportBind:GetState() and lastTeleportPos then
+    if flying and Fly.TeleportMode and FlyTeleportBind and FlyTeleportBind.GetState and FlyTeleportBind:GetState() and lastTeleportPos then
         local now = tick()
         if now - lastTeleportTick >= 0.1 then
             lastTeleportTick = now
-            teleportToPosition(lastTeleportPos)
+            TeleportCharacterTo(lastTeleportPos)
         end
     end
 
@@ -924,9 +1043,25 @@ AddConnection(RunService.RenderStepped:Connect(function()
         if keys.Space then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
         if keys.LeftShift then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 
+        if blueGhost then
+            blueGhost.Position = HRP.Position
+        end
+
         if moveDirection.Magnitude > 0 then
             moveDirection = moveDirection.Unit
-            HRP.CFrame = HRP.CFrame + moveDirection * Fly.Speed * RunService.RenderStepped:Wait()
+        end
+
+        if Fly.TeleportMode then
+            if moveDirection.Magnitude > 0 then
+                HRP.CFrame = HRP.CFrame + (moveDirection * Fly.Speed * dt)
+            end
+        else
+            if flyBodyGyro then
+                flyBodyGyro.CFrame = Camera.CFrame
+            end
+            if flyBodyVelocity then
+                flyBodyVelocity.Velocity = moveDirection * Fly.Speed
+            end
         end
     end
 end))
@@ -1013,6 +1148,15 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     Rounding = 2,
     Callback = function(value)
         Aimbot.Smoothing = value
+    end
+})
+
+AimbotSettings:AddDropdown("AimbotAimMethod", {
+    Text = "Aim Method",
+    Values = { "Camera", "MouseMoveRel" },
+    Default = Aimbot.AimMethod,
+    Callback = function(value)
+        Aimbot.AimMethod = value
     end
 })
 
@@ -1207,6 +1351,18 @@ FlyGroup:AddLabel("Place marker bind"):AddBinder("FlyPlaceBind", {
     Mode = "Hold",
 })
 FlyPlaceBind = Options and Options.FlyPlaceBind or nil
+
+FlyGroup:AddToggle("FlyTeleportMode", {
+    Text = "Teleport Fly (Anchored)",
+    Default = true,
+    Callback = function(value)
+        Fly.TeleportMode = value
+        if flying then
+            stopFly(false)
+            startFly()
+        end
+    end
+})
 
 FlyGroup:AddSlider("FlySpeed", {
     Text = "Speed",

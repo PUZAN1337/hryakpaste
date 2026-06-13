@@ -1253,12 +1253,16 @@ do
 
         PickOuter.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+                if Picking then
+                    return
+                end
                 Picking = true;
 
                 DisplayLabel.Text = '';
 
                 local Break;
                 local Text = '';
+                local startedAt = tick()
 
                 task.spawn(function()
                     while (not Break) do
@@ -1273,25 +1277,31 @@ do
                     end;
                 end);
 
-                wait(0.2);
-
                 local Event;
-                Event = InputService.InputBegan:Connect(function(Input)
+                Event = InputService.InputBegan:Connect(function(NewInput)
                     local Key;
 
-                    if Input.UserInputType == Enum.UserInputType.Keyboard then
-                        if Input.KeyCode == Enum.KeyCode.Escape then
+                    if tick() - startedAt < 0.15 and NewInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                        return
+                    end
+
+                    if NewInput.UserInputType == Enum.UserInputType.Keyboard then
+                        if NewInput.KeyCode == Enum.KeyCode.Escape then
                             Key = 'NONE';
                         else
-                            Key = Input.KeyCode.Name;
+                            Key = NewInput.KeyCode.Name;
                         end
-                    elseif Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    elseif NewInput.UserInputType == Enum.UserInputType.MouseButton1 then
                         Key = 'MB1';
-                    elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                    elseif NewInput.UserInputType == Enum.UserInputType.MouseButton2 then
                         Key = 'MB2';
-                    elseif Input.UserInputType == Enum.UserInputType.MouseButton3 then
+                    elseif NewInput.UserInputType == Enum.UserInputType.MouseButton3 then
                         Key = 'MB3';
                     end;
+
+                    if not Key then
+                        return
+                    end
 
                     Break = true;
                     Picking = false;
@@ -1299,8 +1309,8 @@ do
                     DisplayLabel.Text = Key;
                     KeyPicker.Value = NormalizeKeyName(Key);
 
-                    Library:SafeCallback(KeyPicker.ChangedCallback, Input.KeyCode or Input.UserInputType)
-                    Library:SafeCallback(KeyPicker.Changed, Input.KeyCode or Input.UserInputType)
+                    Library:SafeCallback(KeyPicker.ChangedCallback, NewInput.KeyCode or NewInput.UserInputType)
+                    Library:SafeCallback(KeyPicker.Changed, NewInput.KeyCode or NewInput.UserInputType)
 
                     Library:AttemptSave();
 
