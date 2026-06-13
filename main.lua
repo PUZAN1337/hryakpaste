@@ -47,6 +47,10 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = nil
+pcall(function()
+    VirtualInputManager = game:GetService("VirtualInputManager")
+end)
 
 local ScriptEnabled = true
 local AllConnections = {}
@@ -72,6 +76,71 @@ local function AddHighlight(highlight)
         table.insert(AllHighlights, highlight)
     end
     return highlight
+end
+
+local AntiAFK = {
+    Enabled = false,
+    HookWalkDummy = false,
+    HookedWalkDummy = false,
+}
+
+local AntiAFKConnection = nil
+
+local function TryHookWalkDummy()
+    if AntiAFK.HookedWalkDummy then
+        return true
+    end
+
+    local env = getgenv and getgenv() or _G
+    local sc = (env and (env.setconstant or rawget(env, "setconstant"))) or setconstant
+    if not sc then
+        return false
+    end
+
+    local ok, module = pcall(function()
+        return require(LocalPlayer.PlayerScripts.ClientMain.Replications.Workers.WalkDummy)
+    end)
+    if not ok or not module then
+        return false
+    end
+
+    local hooked = pcall(function()
+        sc(module, 34, function()
+            RunService.Heartbeat:Wait()
+        end)
+    end)
+    if hooked then
+        AntiAFK.HookedWalkDummy = true
+    end
+    return hooked
+end
+
+local function SetAntiAFKEnabled(state)
+    AntiAFK.Enabled = state
+
+    if state and not AntiAFKConnection then
+        AntiAFKConnection = AddConnection(LocalPlayer.Idled:Connect(function()
+            local vu = nil
+            pcall(function()
+                vu = game:GetService("VirtualUser")
+            end)
+            if vu then
+                pcall(function()
+                    vu:CaptureController()
+                    vu:ClickButton2(Vector2.new(0, 0))
+                end)
+            end
+            if AntiAFK.HookWalkDummy then
+                TryHookWalkDummy()
+            end
+        end))
+        return
+    end
+
+    if (not state) and AntiAFKConnection then
+        AntiAFKConnection:Disconnect()
+        AntiAFKConnection = nil
+    end
 end
 
 local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
@@ -207,16 +276,76 @@ local function GetMouseMoveRelFunction()
     local candidates = {
         env and env.mousemoverel or nil,
         env and env.MouseMoveRel or nil,
+        env and env.mouse_move_relative or nil,
+        env and env.mouseMoveRel or nil,
         rawget(env or {}, "mousemoverel"),
         rawget(env or {}, "MouseMoveRel"),
+        rawget(env or {}, "mouse_move_relative"),
+        rawget(env or {}, "mouseMoveRel"),
         mousemoverel,
         MouseMoveRel,
     }
     for _, fn in ipairs(candidates) do
-        if typeof(fn) == "function" then
+        local t = (typeof and typeof(fn)) or type(fn)
+        if t == "function" then
             return fn
         end
     end
+    return nil
+end
+
+local function RoundToInt(x)
+    if x >= 0 then
+        return math.floor(x + 0.5)
+    end
+    return math.ceil(x - 0.5)
+end
+
+local MouseMover = {
+    fn = nil,
+    lastResolve = 0,
+    resolveInterval = 2,
+    residualX = 0,
+    residualY = 0,
+}
+
+local function ResolveMouseMover()
+    local now = tick()
+    if MouseMover.fn and (now - MouseMover.lastResolve) < MouseMover.resolveInterval then
+        return MouseMover.fn
+    end
+
+    MouseMover.lastResolve = now
+
+    local raw = GetMouseMoveRelFunction()
+    if raw then
+        MouseMover.fn = function(dx, dy)
+            local ok = pcall(raw, dx, dy)
+            return ok
+        end
+        return MouseMover.fn
+    end
+
+    if VirtualInputManager and UserInputService and UserInputService.GetMouseLocation then
+        MouseMover.fn = function(dx, dy)
+            local pos = UserInputService:GetMouseLocation()
+            local vx, vy = Camera.ViewportSize.X, Camera.ViewportSize.Y
+            local x = math.clamp(pos.X + dx, 0, vx)
+            local y = math.clamp(pos.Y + dy, 0, vy)
+            local ok = pcall(function()
+                VirtualInputManager:SendMouseMoveEvent(RoundToInt(x), RoundToInt(y), game)
+            end)
+            if not ok then
+                ok = pcall(function()
+                    VirtualInputManager:SendMouseMoveEvent(RoundToInt(x), RoundToInt(y), 0)
+                end)
+            end
+            return ok
+        end
+        return MouseMover.fn
+    end
+
+    MouseMover.fn = nil
     return nil
 end
 
@@ -344,6 +473,8 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     if not ScriptEnabled then return end
     if not Aimbot.Enabled then
         FOVring.Visible = false
+        MouseMover.residualX = 0
+        MouseMover.residualY = 0
         return
     end
     
@@ -364,16 +495,23 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
         local _, aimPart = GetBestTarget()
         if aimPart then
             if Aimbot.AimMethod == "MouseMoveRel" then
-                local moverel = GetMouseMoveRelFunction()
-                if moverel then
+                local mover = ResolveMouseMover()
+                if mover then
                     local screenPos, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
                     if onScreen and screenPos.Z > 0 then
                         local delta = Vector2.new(screenPos.X, screenPos.Y) - center
                         local factor = math.clamp(Aimbot.Smoothing, 0.01, 1)
-                        local dx = math.floor(delta.X * factor)
-                        local dy = math.floor(delta.Y * factor)
+                        local mx = (delta.X * factor) + MouseMover.residualX
+                        local my = (delta.Y * factor) + MouseMover.residualY
+                        local dx = RoundToInt(mx)
+                        local dy = RoundToInt(my)
+                        MouseMover.residualX = mx - dx
+                        MouseMover.residualY = my - dy
                         if dx ~= 0 or dy ~= 0 then
-                            pcall(moverel, dx, dy)
+                            local ok = mover(dx, dy)
+                            if not ok then
+                                MouseMover.fn = nil
+                            end
                         end
                     end
                 else
@@ -385,6 +523,9 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
                 Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
             end
         end
+    else
+        MouseMover.residualX = 0
+        MouseMover.residualY = 0
     end
 end))
 
@@ -1425,6 +1566,30 @@ FlyGroup:AddSlider("FlySpeed", {
     Rounding = 0,
     Callback = function(value)
         Fly.Speed = value
+    end
+})
+
+local AntiAFKGroup = MiscTab:AddGroupbox({
+    Name = "Anti AFK",
+    Side = 1
+})
+
+AntiAFKGroup:AddToggle("AntiAFKEnabled", {
+    Text = "Enabled",
+    Default = false,
+    Callback = function(value)
+        SetAntiAFKEnabled(value)
+    end
+})
+
+AntiAFKGroup:AddToggle("AntiAFKHookWalkDummy", {
+    Text = "Hook WalkDummy",
+    Default = false,
+    Callback = function(value)
+        AntiAFK.HookWalkDummy = value
+        if value and AntiAFK.Enabled then
+            TryHookWalkDummy()
+        end
     end
 })
 
