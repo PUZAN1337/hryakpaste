@@ -198,7 +198,9 @@ local Aimbot = {
     TeamCheck = true,
     FOV = 100,
     Smoothing = 0.1,
+    MouseMoveSensitivity = 3,
     AimNPC = true,
+    OnlyVisible = false,
     ShowFOV = true,
     FOVColor = Color3.fromRGB(255, 255, 255),
     Key = Enum.UserInputType.MouseButton2,
@@ -206,10 +208,17 @@ local Aimbot = {
     AimMethod = "Camera",
 }
 
+local AimbotState = {
+    lockedTarget = nil,
+}
+
 local AimbotCache = {
-    targets = {},
-    lastUpdate = 0,
-    updateInterval = 1.8
+    playerTargets = {},
+    npcTargets = {},
+    lastPlayerUpdate = 0,
+    lastNPCUpdate = 0,
+    playerUpdateInterval = 0.25,
+    npcUpdateInterval = 2,
 }
 
 local FOVring = AddDrawing(Drawing.new("Circle"))
@@ -220,7 +229,7 @@ FOVring.Transparency = 1
 FOVring.Color = Aimbot.FOVColor
 FOVring.Position = Camera.ViewportSize / 2
 
-local function UpdateAimbotCache()
+local function UpdateAimbotPlayerCache()
     if not ScriptEnabled then return end
     local newTargets = {}
     
@@ -239,44 +248,43 @@ local function UpdateAimbotCache()
         end
     end
     
-    if Aimbot.AimNPC then
-        for _, model in ipairs(workspace:GetDescendants()) do
-            if model:IsA("Model") then
-                local humanoid = model:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    if not (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso") or model:FindFirstChild("Torso")) then
-                        continue
+    AimbotCache.playerTargets = newTargets
+    AimbotCache.lastPlayerUpdate = tick()
+end
+
+local function UpdateAimbotNPCCache()
+    if not ScriptEnabled then return end
+    local newTargets = {}
+
+    for _, model in ipairs(workspace:GetDescendants()) do
+        if model:IsA("Model") then
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                if not (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso") or model:FindFirstChild("Torso")) then
+                    continue
+                end
+                local isPlayerChar = false
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player.Character == model then
+                        isPlayerChar = true
+                        break
                     end
-                    local isPlayerChar = false
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player.Character == model then
-                            isPlayerChar = true
-                            break
-                        end
-                    end
-                    if not isPlayerChar then
-                        table.insert(newTargets, {char = model, humanoid = humanoid, isPlayer = false})
-                    end
+                end
+                if not isPlayerChar then
+                    table.insert(newTargets, {char = model, humanoid = humanoid, isPlayer = false})
                 end
             end
         end
     end
-    
-    AimbotCache.targets = newTargets
-    AimbotCache.lastUpdate = tick()
+
+    AimbotCache.npcTargets = newTargets
+    AimbotCache.lastNPCUpdate = tick()
 end
 
 local AimbotHitboxNames = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso" }
 local MaterialNames = {}
 do
     MaterialNames = { "ForceField", "Foil", "Glass", "Ice", "Metal" }
-end
-
-local function GetAimCenter()
-    if Aimbot and Aimbot.AimMethod == "MouseMoveRel" and UserInputService and UserInputService.GetMouseLocation then
-        return UserInputService:GetMouseLocation()
-    end
-    return Camera.ViewportSize / 2
 end
 
 local function GetMouseMoveRelFunction()
@@ -286,10 +294,16 @@ local function GetMouseMoveRelFunction()
         env and env.MouseMoveRel or nil,
         env and env.mouse_move_relative or nil,
         env and env.mouseMoveRel or nil,
+        env and env.Input and env.Input.MouseMove or nil,
+        env and env.Input and env.Input.MouseMoveRel or nil,
         rawget(env or {}, "mousemoverel"),
         rawget(env or {}, "MouseMoveRel"),
         rawget(env or {}, "mouse_move_relative"),
         rawget(env or {}, "mouseMoveRel"),
+        rawget(rawget(env or {}, "Input") or {}, "MouseMove"),
+        rawget(rawget(env or {}, "Input") or {}, "MouseMoveRel"),
+        Input and Input.MouseMove or nil,
+        Input and Input.MouseMoveRel or nil,
         mousemoverel,
         MouseMoveRel,
     }
@@ -311,6 +325,7 @@ end
 
 local MouseMover = {
     fn = nil,
+    kind = nil,
     lastResolve = 0,
     resolveInterval = 2,
     residualX = 0,
@@ -327,6 +342,7 @@ local function ResolveMouseMover()
 
     local raw = GetMouseMoveRelFunction()
     if raw then
+        MouseMover.kind = "relative"
         MouseMover.fn = function(dx, dy)
             local ok = pcall(raw, dx, dy)
             return ok
@@ -335,6 +351,7 @@ local function ResolveMouseMover()
     end
 
     if VirtualInputManager and UserInputService and UserInputService.GetMouseLocation then
+        MouseMover.kind = "absolute"
         MouseMover.fn = function(dx, dy)
             local pos = UserInputService:GetMouseLocation()
             local vx, vy = Camera.ViewportSize.X, Camera.ViewportSize.Y
@@ -354,6 +371,7 @@ local function ResolveMouseMover()
     end
 
     MouseMover.fn = nil
+    MouseMover.kind = nil
     return nil
 end
 
@@ -396,13 +414,13 @@ end
 
 local function GetBestAimPartForCharacter(targetCharacter)
     local preferred = Aimbot.PreferredHitbox
-    local center = GetAimCenter()
+    local center = Camera.ViewportSize / 2
     local preferredPart = preferred and targetCharacter:FindFirstChild(preferred) or nil
     if preferredPart and preferredPart:IsA("BasePart") then
         local screenPos, onScreen = Camera:WorldToScreenPoint(preferredPart.Position)
         if onScreen and screenPos.Z > 0 then
             local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-            if screenDist <= Aimbot.FOV and IsPartVisible(targetCharacter, preferredPart) then
+            if screenDist <= Aimbot.FOV and ((not Aimbot.OnlyVisible) or IsPartVisible(targetCharacter, preferredPart)) then
                 return preferredPart
             end
         end
@@ -417,9 +435,8 @@ local function GetBestAimPartForCharacter(targetCharacter)
             local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
             if onScreen and screenPos.Z > 0 then
                 local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                if screenDist <= Aimbot.FOV and IsPartVisible(targetCharacter, part) then
-                    local worldDist = (part.Position - Camera.CFrame.Position).Magnitude
-                    local score = screenDist + (worldDist * 0.02)
+                if screenDist <= Aimbot.FOV and ((not Aimbot.OnlyVisible) or IsPartVisible(targetCharacter, part)) then
+                    local score = screenDist
 
                     if score < bestScore then
                         bestScore = score
@@ -438,9 +455,9 @@ local function GetBestTarget()
     local bestPart = nil
     local bestScore = math.huge
     local preferred = Aimbot.PreferredHitbox
-    local center = GetAimCenter()
+    local center = Camera.ViewportSize / 2
 
-    for _, target in ipairs(AimbotCache.targets) do
+    for _, target in ipairs(AimbotCache.playerTargets) do
         local char = target.char
         local humanoid = target.humanoid
         if char and humanoid and humanoid.Health > 0 then
@@ -448,8 +465,7 @@ local function GetBestTarget()
             if part then
                 local screenPos = Camera:WorldToScreenPoint(part.Position)
                 local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                local worldDist = (part.Position - Camera.CFrame.Position).Magnitude
-                local score = screenDist + (worldDist * 0.02)
+                local score = screenDist
                 if part.Name == preferred then
                     score = score - 35
                 end
@@ -463,16 +479,70 @@ local function GetBestTarget()
         end
     end
 
+    if Aimbot.AimNPC then
+        for _, target in ipairs(AimbotCache.npcTargets) do
+            local char = target.char
+            local humanoid = target.humanoid
+            if char and humanoid and humanoid.Health > 0 then
+                local part = GetBestAimPartForCharacter(char)
+                if part then
+                    local screenPos = Camera:WorldToScreenPoint(part.Position)
+                    local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                    local score = screenDist
+                    if part.Name == preferred then
+                        score = score - 35
+                    end
+
+                    if score < bestScore then
+                        bestScore = score
+                        bestTarget = target
+                        bestPart = part
+                    end
+                end
+            end
+        end
+    end
+
     return bestTarget, bestPart
 end
 
-UpdateAimbotCache()
+local function GetAimPartForTarget(target)
+    if not target or not target.char or not target.humanoid then
+        return nil
+    end
+    if target.humanoid.Health <= 0 then
+        return nil
+    end
+    local part = GetBestAimPartForCharacter(target.char)
+    if not part then
+        return nil
+    end
+    local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
+    if not onScreen or screenPos.Z <= 0 then
+        return nil
+    end
+    local center = Camera.ViewportSize / 2
+    local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+    if screenDist > Aimbot.FOV then
+        return nil
+    end
+    return part
+end
+
+UpdateAimbotPlayerCache()
+UpdateAimbotNPCCache()
 
 AddConnection(task.spawn(function()
     while ScriptEnabled do
-        task.wait(AimbotCache.updateInterval)
+        task.wait(0.1)
         if Aimbot.Enabled then
-            UpdateAimbotCache()
+            local now = tick()
+            if now - AimbotCache.lastPlayerUpdate >= AimbotCache.playerUpdateInterval then
+                UpdateAimbotPlayerCache()
+            end
+            if Aimbot.AimNPC and (now - AimbotCache.lastNPCUpdate >= AimbotCache.npcUpdateInterval) then
+                UpdateAimbotNPCCache()
+            end
         end
     end
 end))
@@ -489,7 +559,7 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     FOVring.Visible = Aimbot.ShowFOV
     FOVring.Radius = Aimbot.FOV
     FOVring.Color = Aimbot.FOVColor
-    FOVring.Position = GetAimCenter()
+    FOVring.Position = Camera.ViewportSize / 2
     
     local pressed
     if AimbotAimBind and AimbotAimBind.GetState then
@@ -498,25 +568,46 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
         pressed = UserInputService:IsMouseButtonPressed(Aimbot.Key)
     end
     if pressed then
-        local _, aimPart = GetBestTarget()
+        local aimPart = GetAimPartForTarget(AimbotState.lockedTarget)
+        if not aimPart then
+            local bestTarget
+            bestTarget, aimPart = GetBestTarget()
+            AimbotState.lockedTarget = bestTarget
+        end
         if aimPart then
             if Aimbot.AimMethod == "MouseMoveRel" then
                 local mover = ResolveMouseMover()
                 if mover then
                     local screenPos, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
                     if onScreen and screenPos.Z > 0 then
-                        local delta = Vector2.new(screenPos.X, screenPos.Y) - GetAimCenter()
                         local factor = math.clamp(Aimbot.Smoothing, 0.01, 1)
-                        local mx = (delta.X * factor) + MouseMover.residualX
-                        local my = (delta.Y * factor) + MouseMover.residualY
-                        local dx = RoundToInt(mx)
-                        local dy = RoundToInt(my)
-                        MouseMover.residualX = mx - dx
-                        MouseMover.residualY = my - dy
-                        if dx ~= 0 or dy ~= 0 then
+                        local center = Camera.ViewportSize / 2
+                        local delta = Vector2.new(screenPos.X, screenPos.Y) - center
+                        if MouseMover.kind == "absolute" then
+                            local mx = (delta.X * factor) + MouseMover.residualX
+                            local my = (delta.Y * factor) + MouseMover.residualY
+                            local dx = RoundToInt(mx)
+                            local dy = RoundToInt(my)
+                            MouseMover.residualX = mx - dx
+                            MouseMover.residualY = my - dy
+                            if dx == 0 and dy == 0 then
+                                return
+                            end
                             local ok = mover(dx, dy)
                             if not ok then
                                 MouseMover.fn = nil
+                                MouseMover.kind = nil
+                            end
+                        else
+                            local sens = math.clamp(Aimbot.MouseMoveSensitivity or 3, 0.1, 5)
+                            local dx = (delta.X * factor) * sens
+                            local dy = (delta.Y * factor) * sens
+                            if dx ~= 0 or dy ~= 0 then
+                                local ok = mover(dx, dy)
+                                if not ok then
+                                    MouseMover.fn = nil
+                                    MouseMover.kind = nil
+                                end
                             end
                         end
                     end
@@ -530,6 +621,7 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
             end
         end
     else
+        AimbotState.lockedTarget = nil
         MouseMover.residualX = 0
         MouseMover.residualY = 0
     end
@@ -1295,7 +1387,10 @@ AimbotMain:AddToggle("AimbotEnabled", {
     Callback = function(value)
         Aimbot.Enabled = value
         if value then
-            UpdateAimbotCache()
+            UpdateAimbotPlayerCache()
+            if Aimbot.AimNPC then
+                UpdateAimbotNPCCache()
+            end
         end
     end
 })
@@ -1313,6 +1408,14 @@ AimbotMain:AddToggle("AimbotNPC", {
     Default = true,
     Callback = function(value)
         Aimbot.AimNPC = value
+    end
+})
+
+AimbotMain:AddToggle("AimbotOnlyVisible", {
+    Text = "Only if visible",
+    Default = false,
+    Callback = function(value)
+        Aimbot.OnlyVisible = value
     end
 })
 
@@ -1348,6 +1451,17 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     Rounding = 2,
     Callback = function(value)
         Aimbot.Smoothing = value
+    end
+})
+
+AimbotSettings:AddSlider("AimbotMouseMoveSens", {
+    Text = "MouseMove Sens",
+    Min = 0.1,
+    Max = 5,
+    Default = 3,
+    Rounding = 2,
+    Callback = function(value)
+        Aimbot.MouseMoveSensitivity = value
     end
 })
 
