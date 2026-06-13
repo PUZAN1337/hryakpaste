@@ -1,4 +1,4 @@
---[[mega b64 decode
+--mega b64 decode
 local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 local function dec(data)
     data = string.gsub(data, '[^'..b..'=]', '')
@@ -22,11 +22,59 @@ local encoded_lib2 = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3JuaXZhc291dG
 local encoded_lib3 = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
 
 -- xru
-local Library = loadstring(game:HttpGet(dec(encoded_lib1)))()
-local SaveManager = loadstring(game:HttpGet(dec(encoded_lib2)))()
-local ThemeManager = loadstring(game:HttpGet(dec(encoded_lib3)))()
+local function HttpGetAny(url, startMarker)
+    local candidates = {
+        url,
+        "https://r.jina.ai/" .. url,
+        "https://r.jina.ai/http://r.jina.ai/http://" .. url,
+        "https://ghproxy.com/" .. url,
+        "https://mirror.ghproxy.com/" .. url
+    }
 
--- end]]
+    for _, u in ipairs(candidates) do
+        local ok, res = pcall(function()
+            return game:HttpGet(u)
+        end)
+        if ok and type(res) == "string" and #res > 0 then
+            if startMarker then
+                local idx = res:find(startMarker, 1, true)
+                if idx then
+                    res = res:sub(idx)
+                else
+                    res = nil
+                end
+            end
+
+            if res and #res > 0 then
+                return res
+            end
+        end
+    end
+
+    return nil
+end
+
+local function LoadRemoteLua(url, startMarker)
+    local src = HttpGetAny(url, startMarker)
+    if not src then
+        error(("HttpGet failed for %s"):format(url))
+    end
+    local fn, err = loadstring(src)
+    if not fn then
+        error(("loadstring failed for %s: %s"):format(url, tostring(err)))
+    end
+    return fn()
+end
+
+local Library = select(1, LoadRemoteLua(dec(encoded_lib1), "if not memorystats then"))
+local SaveManager = LoadRemoteLua(dec(encoded_lib2), "if not memorystats then")
+local ThemeManager = LoadRemoteLua(dec(encoded_lib3), "if not memorystats then")
+
+if type(Library) ~= "table" or type(Library.CreateWindow) ~= "function" then
+    error("Library загрузилась некорректно (нет CreateWindow). Скорее всего, HttpGet возвращает пустую строку/не тот контент.")
+end
+
+-- end
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
