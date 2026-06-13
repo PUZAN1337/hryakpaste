@@ -47,10 +47,6 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
-local VirtualInputManager = nil
-pcall(function()
-    VirtualInputManager = game:GetService("VirtualInputManager")
-end)
 
 local ScriptEnabled = true
 local AllConnections = {}
@@ -198,14 +194,12 @@ local Aimbot = {
     TeamCheck = true,
     FOV = 100,
     Smoothing = 0.1,
-    MouseMoveSensitivity = 3,
     AimNPC = true,
     OnlyVisible = false,
     ShowFOV = true,
     FOVColor = Color3.fromRGB(255, 255, 255),
     Key = Enum.UserInputType.MouseButton2,
     PreferredHitbox = "Head",
-    AimMethod = "Camera",
 }
 
 local AimbotState = {
@@ -285,94 +279,6 @@ local AimbotHitboxNames = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTors
 local MaterialNames = {}
 do
     MaterialNames = { "ForceField", "Foil", "Glass", "Ice", "Metal" }
-end
-
-local function GetMouseMoveRelFunction()
-    local env = getgenv and getgenv() or _G
-    local candidates = {
-        env and env.mousemoverel or nil,
-        env and env.MouseMoveRel or nil,
-        env and env.mouse_move_relative or nil,
-        env and env.mouseMoveRel or nil,
-        env and env.Input and env.Input.MouseMove or nil,
-        env and env.Input and env.Input.MouseMoveRel or nil,
-        rawget(env or {}, "mousemoverel"),
-        rawget(env or {}, "MouseMoveRel"),
-        rawget(env or {}, "mouse_move_relative"),
-        rawget(env or {}, "mouseMoveRel"),
-        rawget(rawget(env or {}, "Input") or {}, "MouseMove"),
-        rawget(rawget(env or {}, "Input") or {}, "MouseMoveRel"),
-        Input and Input.MouseMove or nil,
-        Input and Input.MouseMoveRel or nil,
-        mousemoverel,
-        MouseMoveRel,
-    }
-    for _, fn in ipairs(candidates) do
-        local t = (typeof and typeof(fn)) or type(fn)
-        if t == "function" then
-            return fn
-        end
-    end
-    return nil
-end
-
-local function RoundToInt(x)
-    if x >= 0 then
-        return math.floor(x + 0.5)
-    end
-    return math.ceil(x - 0.5)
-end
-
-local MouseMover = {
-    fn = nil,
-    kind = nil,
-    lastResolve = 0,
-    resolveInterval = 2,
-    residualX = 0,
-    residualY = 0,
-}
-
-local function ResolveMouseMover()
-    local now = tick()
-    if MouseMover.fn and (now - MouseMover.lastResolve) < MouseMover.resolveInterval then
-        return MouseMover.fn
-    end
-
-    MouseMover.lastResolve = now
-
-    local raw = GetMouseMoveRelFunction()
-    if raw then
-        MouseMover.kind = "relative"
-        MouseMover.fn = function(dx, dy)
-            local ok = pcall(raw, dx, dy)
-            return ok
-        end
-        return MouseMover.fn
-    end
-
-    if VirtualInputManager and UserInputService and UserInputService.GetMouseLocation then
-        MouseMover.kind = "absolute"
-        MouseMover.fn = function(dx, dy)
-            local pos = UserInputService:GetMouseLocation()
-            local vx, vy = Camera.ViewportSize.X, Camera.ViewportSize.Y
-            local x = math.clamp(pos.X + dx, 0, vx)
-            local y = math.clamp(pos.Y + dy, 0, vy)
-            local ok = pcall(function()
-                VirtualInputManager:SendMouseMoveEvent(RoundToInt(x), RoundToInt(y), game)
-            end)
-            if not ok then
-                ok = pcall(function()
-                    VirtualInputManager:SendMouseMoveEvent(RoundToInt(x), RoundToInt(y), 0)
-                end)
-            end
-            return ok
-        end
-        return MouseMover.fn
-    end
-
-    MouseMover.fn = nil
-    MouseMover.kind = nil
-    return nil
 end
 
 local function IsPartVisible(targetCharacter, part)
@@ -551,8 +457,6 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     if not ScriptEnabled then return end
     if not Aimbot.Enabled then
         FOVring.Visible = false
-        MouseMover.residualX = 0
-        MouseMover.residualY = 0
         return
     end
     
@@ -575,55 +479,11 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
             AimbotState.lockedTarget = bestTarget
         end
         if aimPart then
-            if Aimbot.AimMethod == "MouseMoveRel" then
-                local mover = ResolveMouseMover()
-                if mover then
-                    local screenPos, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
-                    if onScreen and screenPos.Z > 0 then
-                        local factor = math.clamp(Aimbot.Smoothing, 0.01, 1)
-                        local center = Camera.ViewportSize / 2
-                        local delta = Vector2.new(screenPos.X, screenPos.Y) - center
-                        if MouseMover.kind == "absolute" then
-                            local mx = (delta.X * factor) + MouseMover.residualX
-                            local my = (delta.Y * factor) + MouseMover.residualY
-                            local dx = RoundToInt(mx)
-                            local dy = RoundToInt(my)
-                            MouseMover.residualX = mx - dx
-                            MouseMover.residualY = my - dy
-                            if dx == 0 and dy == 0 then
-                                return
-                            end
-                            local ok = mover(dx, dy)
-                            if not ok then
-                                MouseMover.fn = nil
-                                MouseMover.kind = nil
-                            end
-                        else
-                            local sens = math.clamp(Aimbot.MouseMoveSensitivity or 3, 0.1, 5)
-                            local dx = (delta.X * factor) * sens
-                            local dy = (delta.Y * factor) * sens
-                            if dx ~= 0 or dy ~= 0 then
-                                local ok = mover(dx, dy)
-                                if not ok then
-                                    MouseMover.fn = nil
-                                    MouseMover.kind = nil
-                                end
-                            end
-                        end
-                    end
-                else
-                    local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
-                    Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
-                end
-            else
-                local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
-                Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
-            end
+            local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
         end
     else
         AimbotState.lockedTarget = nil
-        MouseMover.residualX = 0
-        MouseMover.residualY = 0
     end
 end))
 
@@ -1451,26 +1311,6 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     Rounding = 2,
     Callback = function(value)
         Aimbot.Smoothing = value
-    end
-})
-
-AimbotSettings:AddSlider("AimbotMouseMoveSens", {
-    Text = "MouseMove Sens",
-    Min = 0.1,
-    Max = 5,
-    Default = 3,
-    Rounding = 2,
-    Callback = function(value)
-        Aimbot.MouseMoveSensitivity = value
-    end
-})
-
-AimbotSettings:AddDropdown("AimbotAimMethod", {
-    Text = "Aim Method",
-    Values = { "Camera", "MouseMoveRel" },
-    Default = Aimbot.AimMethod,
-    Callback = function(value)
-        Aimbot.AimMethod = value
     end
 })
 
