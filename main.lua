@@ -17,62 +17,14 @@ end
 -- ===============================================
 
 -- b64
-local encoded_lib1 = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9tYWluL2xpYnJhcnlfbWFpbi5sdWE="
-local encoded_lib2 = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9tYWluL2xpYnJhcnlfc2F2ZS5sdWE="
-local encoded_lib3 = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
+local encoded_lib1 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfbWFpbi5sdWE="
+local encoded_lib2 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfc2F2ZS5sdWE="
+local encoded_lib3 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
 
 -- xru
-local function HttpGetAny(url, startMarker)
-    local candidates = {
-        url,
-        "https://r.jina.ai/" .. url,
-        "https://r.jina.ai/http://r.jina.ai/http://" .. url,
-        "https://ghproxy.com/" .. url,
-        "https://mirror.ghproxy.com/" .. url
-    }
-
-    for _, u in ipairs(candidates) do
-        local ok, res = pcall(function()
-            return game:HttpGet(u)
-        end)
-        if ok and type(res) == "string" and #res > 0 then
-            if startMarker then
-                local idx = res:find(startMarker, 1, true)
-                if idx then
-                    res = res:sub(idx)
-                else
-                    res = nil
-                end
-            end
-
-            if res and #res > 0 then
-                return res
-            end
-        end
-    end
-
-    return nil
-end
-
-local function LoadRemoteLua(url, startMarker)
-    local src = HttpGetAny(url, startMarker)
-    if not src then
-        error(("HttpGet failed for %s"):format(url))
-    end
-    local fn, err = loadstring(src)
-    if not fn then
-        error(("loadstring failed for %s: %s"):format(url, tostring(err)))
-    end
-    return fn()
-end
-
-local Library = select(1, LoadRemoteLua(dec(encoded_lib1), "if not memorystats then"))
-local SaveManager = LoadRemoteLua(dec(encoded_lib2), "if not memorystats then")
-local ThemeManager = LoadRemoteLua(dec(encoded_lib3), "if not memorystats then")
-
-if type(Library) ~= "table" or type(Library.CreateWindow) ~= "function" then
-    error("Library загрузилась некорректно (нет CreateWindow). Скорее всего, HttpGet возвращает пустую строку/не тот контент.")
-end
+local Library = loadstring(game:HttpGet(dec(encoded_lib1)))()
+local SaveManager = loadstring(game:HttpGet(dec(encoded_lib2)))()
+local ThemeManager = loadstring(game:HttpGet(dec(encoded_lib3)))()
 
 -- end
 
@@ -110,15 +62,53 @@ local function AddHighlight(highlight)
     return highlight
 end
 
-local function InputMatchesBind(input, bind)
-    if bind == nil or bind == "None" then return false end
-    if bind == "MB1" then return input.UserInputType == Enum.UserInputType.MouseButton1 end
-    if bind == "MB2" then return input.UserInputType == Enum.UserInputType.MouseButton2 end
-    if bind == "MB3" then return input.UserInputType == Enum.UserInputType.MouseButton3 end
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        return input.KeyCode.Name == bind
-    end
-    return false
+local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
+    local r, g, b = defaultColor.R * 255, defaultColor.G * 255, defaultColor.B * 255
+    
+    local rSlider = groupbox:AddSlider(name .. "_R", {
+        Text = name .. " (Red)",
+        Min = 0,
+        Max = 255,
+        Default = r,
+        Rounding = 0,
+        Callback = function(val)
+            r = val
+            callback(Color3.fromRGB(r, g, b))
+        end
+    })
+    
+    local gSlider = groupbox:AddSlider(name .. "_G", {
+        Text = name .. " (Green)",
+        Min = 0,
+        Max = 255,
+        Default = g,
+        Rounding = 0,
+        Callback = function(val)
+            g = val
+            callback(Color3.fromRGB(r, g, b))
+        end
+    })
+    
+    local bSlider = groupbox:AddSlider(name .. "_B", {
+        Text = name .. " (Blue)",
+        Min = 0,
+        Max = 255,
+        Default = b,
+        Rounding = 0,
+        Callback = function(val)
+            b = val
+            callback(Color3.fromRGB(r, g, b))
+        end
+    })
+    
+    return {
+        SetValue = function(newColor)
+            r, g, b = newColor.R * 255, newColor.G * 255, newColor.B * 255
+            rSlider:SetValue(r)
+            gSlider:SetValue(g)
+            bSlider:SetValue(b)
+        end
+    }
 end
 
 local Aimbot = {
@@ -128,7 +118,8 @@ local Aimbot = {
     Smoothing = 0.1,
     AimNPC = true,
     ShowFOV = true,
-    FOVColor = Color3.fromRGB(255, 128, 128)
+    FOVColor = Color3.fromRGB(255, 128, 128),
+    Key = Enum.UserInputType.MouseButton2
 }
 
 local AimbotCache = {
@@ -236,12 +227,7 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     FOVring.Color = Aimbot.FOVColor
     FOVring.Position = Camera.ViewportSize / 2
     
-    local pressed = false
-    if getgenv().Options and getgenv().Options.AimbotBind then
-        pressed = getgenv().Options.AimbotBind:GetState()
-    else
-        pressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-    end
+    local pressed = UserInputService:IsMouseButtonPressed(Aimbot.Key)
     local center = Camera.ViewportSize / 2
     
     if pressed then
@@ -341,9 +327,7 @@ AddConnection(Players.PlayerAdded:Connect(function(plr)
 end))
 
 local Fullbright = {
-    Enabled = false,
-    Color = Color3.new(1, 1, 1),
-    Time = 12
+    Enabled = false
 }
 
 local OriginalLighting = nil
@@ -365,12 +349,12 @@ local function ApplyFullbright()
         }
     end
 
-    Lighting.Brightness = 2
-    Lighting.Ambient = Fullbright.Color
-    Lighting.OutdoorAmbient = Fullbright.Color
+    Lighting.Brightness = 0
+    Lighting.Ambient = Color3.new(1, 1, 1)
+    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 1e10
-    Lighting.ClockTime = Fullbright.Time
+    Lighting.ClockTime = 12
     Lighting.GeographicLatitude = 0
     Lighting.Technology = Enum.Technology.ShadowMap
 end
@@ -408,7 +392,8 @@ local HRP = Character:WaitForChild("HumanoidRootPart")
 
 local Fly = {
     Enabled = false,
-    Speed = 80
+    Speed = 80,
+    Key = Enum.KeyCode.B
 }
 
 local flying = false
@@ -416,7 +401,7 @@ local speed = Fly.Speed
 local keys = {
     W = false, A = false, S = false, D = false,
     Space = false, LeftShift = false,
-    Teleport = false
+    N = false
 }
 
 local blueGhost = nil
@@ -485,10 +470,10 @@ local function stopFly(teleportToYellow)
     Fly.Enabled = false
 end
 
-local function placeYellowGhostAtMouse()
+local function placeYellowGhostAtMouse(input)
     if not flying then return end
     local camera = Camera
-    local mousePos = UserInputService:GetMouseLocation()
+    local mousePos = input.Position
     local ray = camera:ScreenPointToRay(mousePos.X, mousePos.Y)
     local direction = ray.Direction * 1000
     local params = RaycastParams.new()
@@ -504,7 +489,7 @@ end
 local function startTeleportLoop()
     if teleportCoroutine then return end
     teleportCoroutine = task.spawn(function()
-        while keys.Teleport and ScriptEnabled do
+        while keys.N and ScriptEnabled do
             if lastTeleportPos then
                 teleportToPosition(lastTeleportPos)
             end
@@ -518,9 +503,17 @@ AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not ScriptEnabled then return end
     if gameProcessed then return end
 
-    local placeBind = getgenv().Options and getgenv().Options.PlaceMarkerBind and getgenv().Options.PlaceMarkerBind.Value or "MB3"
-    if InputMatchesBind(input, placeBind) then
-        placeYellowGhostAtMouse()
+    if input.KeyCode == Fly.Key then
+        if not flying then
+            startFly()
+        else
+            stopFly(true)
+        end
+    elseif input.KeyCode == Enum.KeyCode.N then
+        keys.N = true
+        startTeleportLoop()
+    elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+        placeYellowGhostAtMouse(input)
     elseif input.KeyCode == Enum.KeyCode.W then keys.W = true
     elseif input.KeyCode == Enum.KeyCode.A then keys.A = true
     elseif input.KeyCode == Enum.KeyCode.S then keys.S = true
@@ -538,23 +531,12 @@ AddConnection(UserInputService.InputEnded:Connect(function(input, gameProcessed)
     elseif input.KeyCode == Enum.KeyCode.D then keys.D = false
     elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = false
     elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = false
+    elseif input.KeyCode == Enum.KeyCode.N then keys.N = false
     end
 end))
 
 AddConnection(RunService.RenderStepped:Connect(function()
     if not ScriptEnabled then return end
-
-    local teleportState = false
-    if getgenv().Options and getgenv().Options.TeleportBind then
-        teleportState = getgenv().Options.TeleportBind:GetState()
-    end
-    if teleportState and not keys.Teleport then
-        keys.Teleport = true
-        startTeleportLoop()
-    elseif not teleportState and keys.Teleport then
-        keys.Teleport = false
-    end
-
     if flying and HRP then
         local moveDirection = Vector3.new(0, 0, 0)
         local lookVector = Camera.CFrame.LookVector
@@ -582,7 +564,7 @@ AddConnection(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     Fly.Enabled = false
     destroyGhosts()
     if teleportCoroutine then
-        keys.Teleport = false
+        keys.N = false
         teleportCoroutine = nil
     end
 end))
@@ -601,7 +583,7 @@ local AimbotMain = AimbotTab:AddGroupbox({
     Side = 1
 })
 
-local AimbotEnabledToggle = AimbotMain:AddToggle("AimbotEnabled", {
+AimbotMain:AddToggle("AimbotEnabled", {
     Text = "Enabled",
     Default = false,
     Callback = function(value)
@@ -610,12 +592,6 @@ local AimbotEnabledToggle = AimbotMain:AddToggle("AimbotEnabled", {
             UpdateAimbotCache()
         end
     end
-})
-
-AimbotEnabledToggle:AddBinder("AimbotBind", {
-    Default = "MB2",
-    Text = "Aimbot",
-    Mode = "Hold"
 })
 
 AimbotMain:AddToggle("AimbotTeamCheck", {
@@ -669,13 +645,9 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     end
 })
 
-AimbotSettings:AddLabel("FOV Color"):AddColorPicker("AimbotFOVColor", {
-    Default = Aimbot.FOVColor,
-    Title = "FOV Color",
-    Callback = function(value)
-        Aimbot.FOVColor = value
-    end
-})
+AddColorPickerAlternative(AimbotSettings, "FOV Color", Aimbot.FOVColor, function(value)
+    Aimbot.FOVColor = value
+end)
 
 local VisualsTab = Window:AddTab("Visuals")
 
@@ -719,13 +691,9 @@ ChamsGroup:AddSlider("ChamsTransparency", {
     end
 })
 
-ChamsGroup:AddLabel("Chams Color"):AddColorPicker("ChamsColor", {
-    Default = Chams.Color,
-    Title = "Chams Color",
-    Callback = function(value)
-        Chams.Color = value
-    end
-})
+AddColorPickerAlternative(ChamsGroup, "Chams Color", Chams.Color, function(value)
+    Chams.Color = value
+end)
 
 local WorldGroup = VisualsTab:AddGroupbox({
     Name = "World",
@@ -740,25 +708,6 @@ WorldGroup:AddToggle("FullbrightEnabled", {
     end
 })
 
-WorldGroup:AddLabel("Fullbright Color"):AddColorPicker("FullbrightColor", {
-    Default = Fullbright.Color,
-    Title = "Fullbright Color",
-    Callback = function(value)
-        Fullbright.Color = value
-    end
-})
-
-WorldGroup:AddSlider("FullbrightTime", {
-    Text = "Custom Time",
-    Min = 0,
-    Max = 24,
-    Default = Fullbright.Time,
-    Rounding = 2,
-    Callback = function(value)
-        Fullbright.Time = value
-    end
-})
-
 local MiscTab = Window:AddTab("Misc")
 
 local FlyGroup = MiscTab:AddGroupbox({
@@ -766,8 +715,8 @@ local FlyGroup = MiscTab:AddGroupbox({
     Side = 1
 })
 
-local FlyToggle = FlyGroup:AddToggle("puzo exploit", {
-    Text = "Enabled",
+FlyGroup:AddToggle("puzo exploit", {
+    Text = "Enabled (Press B)",
     Default = false,
     Callback = function(value)
         if value then
@@ -776,24 +725,6 @@ local FlyToggle = FlyGroup:AddToggle("puzo exploit", {
             stopFly(true)
         end
     end
-})
-
-FlyToggle:AddBinder("FlyBind", {
-    Default = "B",
-    Text = "Fly",
-    SyncToggleState = true
-})
-
-FlyGroup:AddLabel("Teleport Loop"):AddBinder("TeleportBind", {
-    Default = "N",
-    Text = "Teleport Loop",
-    Mode = "Hold"
-})
-
-FlyGroup:AddLabel("Place Marker"):AddBinder("PlaceMarkerBind", {
-    Default = "MB3",
-    Text = "Place Marker",
-    Mode = "Hold"
 })
 
 FlyGroup:AddSlider("FlySpeed", {
@@ -814,7 +745,7 @@ local UnloadGroup = SettingsTab:AddGroupbox({
     Side = 1
 })
 
-local function UnloadScript()
+UnloadGroup:AddButton("Unload Script", function()
     ScriptEnabled = false
     Aimbot.Enabled = false
     FOVring:Remove()
@@ -835,7 +766,7 @@ local function UnloadScript()
     end
     destroyGhosts()
     if teleportCoroutine then
-        keys.Teleport = false
+        keys.N = false
         teleportCoroutine = nil
     end
     for _, conn in ipairs(AllConnections) do
@@ -852,17 +783,9 @@ local function UnloadScript()
     table.clear(AllHighlights)
     getgenv().Toggles = nil
     getgenv().Options = nil
-end
-
-UnloadGroup:AddButton("Unload Script", function()
-    UnloadScript()
 end)
 
-UnloadGroup:AddLabel("Unload Hotkey"):AddBinder("UnloadBind", {
-    Default = "Delete",
-    Text = "Unload",
-    Mode = "Hold"
-})
+UnloadGroup:AddLabel("Hotkey: Delete to unload")
 
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
@@ -876,9 +799,28 @@ ThemeManager:SetFolder("PuzoExploit/theme")
 ThemeManager:ApplyToTab(SettingsTab)
 
 AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed or not ScriptEnabled then return end
-    local unloadBind = getgenv().Options and getgenv().Options.UnloadBind and getgenv().Options.UnloadBind.Value or "Delete"
-    if InputMatchesBind(input, unloadBind) then
-        UnloadScript()
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.Delete then
+        if Library and Library.ScreenGui then
+            Library.ScreenGui:Destroy()
+        end
+        ScriptEnabled = false
+        Aimbot.Enabled = false
+        FOVring:Remove()
+        SetChamsEnabled(false)
+        SetFullbrightEnabled(false)
+        flying = false
+        Fly.Enabled = false
+        if HRP then HRP.Anchored = false end
+        destroyGhosts()
+        if teleportCoroutine then
+            keys.N = false
+            teleportCoroutine = nil
+        end
+        for _, conn in ipairs(AllConnections) do
+            if conn then pcall(function() conn:Disconnect() end) end
+        end
+        for _, drawing in ipairs(AllDrawings) do
+            if drawing then pcall(function() drawing:Remove() end) end
+        end
     end
 end))
