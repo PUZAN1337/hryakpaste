@@ -130,8 +130,9 @@ local Aimbot = {
     Smoothing = 0.1,
     AimNPC = true,
     ShowFOV = true,
-    FOVColor = Color3.fromRGB(255, 128, 128),
-    Key = Enum.UserInputType.MouseButton2
+    FOVColor = Color3.fromRGB(255, 255, 255),
+    Key = Enum.UserInputType.MouseButton2,
+    PreferredHitbox = "Head",
 }
 
 local AimbotCache = {
@@ -156,12 +157,11 @@ local function UpdateAimbotCache()
         if player ~= LocalPlayer then
             local char = player.Character
             if char then
-                local head = char:FindFirstChild("Head")
                 local humanoid = char:FindFirstChild("Humanoid")
-                if head and humanoid and humanoid.Health > 0 then
+                if humanoid and humanoid.Health > 0 then
                     if Aimbot.TeamCheck and LocalPlayer.Team and player.Team == LocalPlayer.Team then
                     else
-                        table.insert(newTargets, {char = char, head = head, pos = head.Position, isPlayer = true, player = player})
+                        table.insert(newTargets, {char = char, humanoid = humanoid, isPlayer = true, player = player})
                     end
                 end
             end
@@ -169,22 +169,22 @@ local function UpdateAimbotCache()
     end
     
     if Aimbot.AimNPC then
-        for _, head in ipairs(workspace:GetDescendants()) do
-            if head:IsA("BasePart") and head.Name == "Head" then
-                local char = head.Parent
-                if char and char:FindFirstChild("Humanoid") then
-                    local humanoid = char.Humanoid
-                    if humanoid.Health > 0 then
-                        local isPlayerChar = false
-                        for _, player in ipairs(Players:GetPlayers()) do
-                            if player.Character == char then
-                                isPlayerChar = true
-                                break
-                            end
+        for _, model in ipairs(workspace:GetDescendants()) do
+            if model:IsA("Model") then
+                local humanoid = model:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    if not (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso") or model:FindFirstChild("Torso")) then
+                        continue
+                    end
+                    local isPlayerChar = false
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if player.Character == model then
+                            isPlayerChar = true
+                            break
                         end
-                        if not isPlayerChar then
-                            table.insert(newTargets, {char = char, head = head, pos = head.Position, isPlayer = false})
-                        end
+                    end
+                    if not isPlayerChar then
+                        table.insert(newTargets, {char = model, humanoid = humanoid, isPlayer = false})
                     end
                 end
             end
@@ -195,25 +195,100 @@ local function UpdateAimbotCache()
     AimbotCache.lastUpdate = tick()
 end
 
-local function GetClosestTarget(origin, direction)
-    local bestTarget = nil
-    local bestDist = math.huge
-    direction = direction.Unit
-    
-    for _, target in ipairs(AimbotCache.targets) do
-        local toPoint = target.pos - origin
-        local projection = toPoint:Dot(direction)
-        if projection > 0 then
-            local closestPoint = origin + direction * projection
-            local dist = (target.pos - closestPoint).Magnitude
-            if dist < bestDist then
-                bestDist = dist
-                bestTarget = target
+local AimbotHitboxNames = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso" }
+local MaterialNames = {}
+do
+    for _, material in ipairs(Enum.Material:GetEnumItems()) do
+        table.insert(MaterialNames, material.Name)
+    end
+    table.sort(MaterialNames, function(a, b)
+        return a < b
+    end)
+end
+
+local function IsPartVisible(targetCharacter, part)
+    local cameraPos = Camera.CFrame.Position
+    local direction = part.Position - cameraPos
+    local distance = direction.Magnitude
+    if distance <= 0 then
+        return true
+    end
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = { Character }
+    params.IgnoreWater = true
+
+    local result = workspace:Raycast(cameraPos, direction, params)
+    if not result then
+        return true
+    end
+
+    return result.Instance and result.Instance:IsDescendantOf(targetCharacter)
+end
+
+local function GetBestAimPartForCharacter(targetCharacter)
+    local preferred = Aimbot.PreferredHitbox
+    local center = Camera.ViewportSize / 2
+    local bestPart = nil
+    local bestScore = math.huge
+
+    for _, partName in ipairs(AimbotHitboxNames) do
+        local part = targetCharacter:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
+            if onScreen and screenPos.Z > 0 then
+                local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                if screenDist <= Aimbot.FOV and IsPartVisible(targetCharacter, part) then
+                    local worldDist = (part.Position - Camera.CFrame.Position).Magnitude
+                    local score = screenDist + (worldDist * 0.02)
+                    if partName == preferred then
+                        score = score - 35
+                    end
+
+                    if score < bestScore then
+                        bestScore = score
+                        bestPart = part
+                    end
+                end
             end
         end
     end
-    
-    return bestTarget
+
+    return bestPart
+end
+
+local function GetBestTarget()
+    local bestTarget = nil
+    local bestPart = nil
+    local bestScore = math.huge
+    local preferred = Aimbot.PreferredHitbox
+    local center = Camera.ViewportSize / 2
+
+    for _, target in ipairs(AimbotCache.targets) do
+        local char = target.char
+        local humanoid = target.humanoid
+        if char and humanoid and humanoid.Health > 0 then
+            local part = GetBestAimPartForCharacter(char)
+            if part then
+                local screenPos = Camera:WorldToScreenPoint(part.Position)
+                local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                local worldDist = (part.Position - Camera.CFrame.Position).Magnitude
+                local score = screenDist + (worldDist * 0.02)
+                if part.Name == preferred then
+                    score = score - 35
+                end
+
+                if score < bestScore then
+                    bestScore = score
+                    bestTarget = target
+                    bestPart = part
+                end
+            end
+        end
+    end
+
+    return bestTarget, bestPart
 end
 
 UpdateAimbotCache()
@@ -248,16 +323,10 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     local center = Camera.ViewportSize / 2
     
     if pressed then
-        local target = GetClosestTarget(Camera.CFrame.Position, Camera.CFrame.LookVector)
-        if target and target.char and target.char:FindFirstChild("Head") then
-            local headPos, onScreen = Camera:WorldToScreenPoint(target.char.Head.Position)
-            if onScreen then
-                local screenHead = Vector2.new(headPos.X, headPos.Y)
-                if (screenHead - center).Magnitude <= Aimbot.FOV then
-                    local newCF = CFrame.new(Camera.CFrame.Position, target.char.Head.Position)
-                    Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
-                end
-            end
+        local _, aimPart = GetBestTarget()
+        if aimPart then
+            local newCF = CFrame.new(Camera.CFrame.Position, aimPart.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(newCF, Aimbot.Smoothing)
         end
     end
 end))
@@ -271,10 +340,62 @@ local Chams = {
     Color = Color3.fromRGB(255, 0, 0),
     Transparency = 0.5,
     Wallhack = true,
-    TeamColor = false
+    TeamColor = false,
+    ApplyMaterial = true,
+    Material = Enum.Material.Neon,
+    MaterialName = "Neon",
 }
 
 local ChamsConnection = nil
+local ChamsTracked = {}
+
+local function ApplyChamsMaterial(character, color)
+    local tracked = ChamsTracked[character]
+    if not tracked then
+        tracked = {}
+        ChamsTracked[character] = tracked
+    end
+
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local original = tracked[obj]
+            if not original then
+                tracked[obj] = {
+                    Material = obj.Material,
+                    Color = obj.Color,
+                    LocalTransparencyModifier = obj.LocalTransparencyModifier,
+                }
+            end
+
+            obj.Material = Chams.Material
+            obj.Color = color
+            obj.LocalTransparencyModifier = Chams.Transparency
+        end
+    end
+
+    for part, original in pairs(tracked) do
+        if not part or not part.Parent or not part:IsDescendantOf(character) then
+            tracked[part] = nil
+        end
+    end
+end
+
+local function RestoreChamsMaterial(character)
+    local tracked = ChamsTracked[character]
+    if not tracked then
+        return
+    end
+
+    for part, original in pairs(tracked) do
+        if part and part.Parent then
+            part.Material = original.Material
+            part.Color = original.Color
+            part.LocalTransparencyModifier = original.LocalTransparencyModifier
+        end
+    end
+
+    ChamsTracked[character] = nil
+end
 
 local function ApplyChamsToPlayer(plr)
     if not ScriptEnabled then return end
@@ -298,6 +419,12 @@ local function ApplyChamsToPlayer(plr)
     highlight.FillTransparency = Chams.Transparency
     highlight.OutlineTransparency = 1
     highlight.DepthMode = Chams.Wallhack and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+
+    if Chams.ApplyMaterial then
+        ApplyChamsMaterial(character, color)
+    else
+        RestoreChamsMaterial(character)
+    end
 end
 
 local function RemoveChamsFromPlayer(plr)
@@ -306,6 +433,7 @@ local function RemoveChamsFromPlayer(plr)
     if character then
         local highlight = character:FindFirstChildOfClass("Highlight")
         if highlight then highlight:Destroy() end
+        RestoreChamsMaterial(character)
     end
 end
 
@@ -475,6 +603,168 @@ local FlyTeleportBind = nil
 local FlyPlaceBind = nil
 local AimbotAimBind = nil
 local UnloadBind = nil
+local HitboxExpanderToggle = nil
+
+local HitboxExpander = {
+    Enabled = false,
+    Scale = 1.5,
+    Parts = { Head = true },
+}
+
+local HitboxExpanderPartNames = {
+    "Head",
+    "HumanoidRootPart",
+    "UpperTorso",
+    "LowerTorso",
+    "Torso",
+    "LeftUpperArm",
+    "RightUpperArm",
+    "LeftLowerArm",
+    "RightLowerArm",
+    "LeftHand",
+    "RightHand",
+    "LeftUpperLeg",
+    "RightUpperLeg",
+    "LeftLowerLeg",
+    "RightLowerLeg",
+    "LeftFoot",
+    "RightFoot",
+    "Left Arm",
+    "Right Arm",
+    "Left Leg",
+    "Right Leg",
+}
+
+local HitboxTracked = {}
+local HitboxExpanderConnection = nil
+
+local function RestoreHitboxesForCharacter(character)
+    local tracked = HitboxTracked[character]
+    if not tracked then
+        return
+    end
+
+    for part, original in pairs(tracked) do
+        if part and part.Parent then
+            part.Size = original.Size
+            part.CanCollide = original.CanCollide
+            part.Massless = original.Massless
+        end
+    end
+
+    HitboxTracked[character] = nil
+end
+
+local function ApplyHitboxesForCharacter(character)
+    local tracked = HitboxTracked[character]
+    if not tracked then
+        tracked = {}
+        HitboxTracked[character] = tracked
+    end
+
+    for _, partName in ipairs(HitboxExpanderPartNames) do
+        local selected = HitboxExpander.Parts[partName] == true
+        local part = character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            if selected then
+                local original = tracked[part]
+                if not original then
+                    tracked[part] = {
+                        Size = part.Size,
+                        CanCollide = part.CanCollide,
+                        Massless = part.Massless,
+                    }
+                    original = tracked[part]
+                end
+
+                part.Size = original.Size * HitboxExpander.Scale
+                part.CanCollide = false
+                part.Massless = true
+            else
+                local original = tracked[part]
+                if original then
+                    part.Size = original.Size
+                    part.CanCollide = original.CanCollide
+                    part.Massless = original.Massless
+                    tracked[part] = nil
+                end
+            end
+        end
+    end
+
+    for part, original in pairs(tracked) do
+        if not part or not part.Parent or not part:IsDescendantOf(character) then
+            tracked[part] = nil
+        end
+    end
+
+    if not next(tracked) then
+        HitboxTracked[character] = nil
+    end
+end
+
+local function UpdateHitboxExpander()
+    if not ScriptEnabled then
+        return
+    end
+    if not HitboxExpander.Enabled then
+        return
+    end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local char = plr.Character
+            if char then
+                ApplyHitboxesForCharacter(char)
+            end
+        end
+    end
+end
+
+local function SetHitboxExpanderEnabled(state)
+    HitboxExpander.Enabled = state
+
+    if state and not HitboxExpanderConnection then
+        HitboxExpanderConnection = RunService.Heartbeat:Connect(UpdateHitboxExpander)
+        AddConnection(HitboxExpanderConnection)
+        UpdateHitboxExpander()
+        return
+    end
+
+    if (not state) and HitboxExpanderConnection then
+        HitboxExpanderConnection:Disconnect()
+        HitboxExpanderConnection = nil
+        local characters = {}
+        for character, _ in pairs(HitboxTracked) do
+            table.insert(characters, character)
+        end
+        for _, character in ipairs(characters) do
+            if character then
+                RestoreHitboxesForCharacter(character)
+            end
+        end
+    end
+end
+
+local function SetHitboxExpanderScale(scale)
+    HitboxExpander.Scale = scale
+    if HitboxExpander.Enabled then
+        UpdateHitboxExpander()
+    end
+end
+
+local function SetHitboxExpanderParts(map)
+    HitboxExpander.Parts = map or {}
+    if HitboxExpander.Enabled then
+        UpdateHitboxExpander()
+    end
+end
+
+AddConnection(Players.PlayerRemoving:Connect(function(plr)
+    if plr and plr.Character then
+        RestoreHitboxesForCharacter(plr.Character)
+    end
+end))
 
 local function GetBindValue(optionOrValue)
     if type(optionOrValue) == "table" and optionOrValue.Value ~= nil then
@@ -726,6 +1016,15 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     end
 })
 
+AimbotSettings:AddDropdown("AimbotHitbox", {
+    Text = "Preferred Hitbox",
+    Values = AimbotHitboxNames,
+    Default = Aimbot.PreferredHitbox,
+    Callback = function(value)
+        Aimbot.PreferredHitbox = value
+    end
+})
+
 AimbotSettings:AddLabel("Aim bind"):AddBinder("AimbotAimBind", {
     Text = "Aimbot Aim",
     Default = "MB2",
@@ -788,6 +1087,31 @@ ChamsGroup:AddLabel("Chams Color"):AddColorPicker("ChamsColor", {
     Title = "Chams Color",
     Callback = function(value)
         Chams.Color = value
+    end
+})
+
+ChamsGroup:AddToggle("ChamsApplyMaterial", {
+    Text = "Apply Material",
+    Default = true,
+    Callback = function(value)
+        Chams.ApplyMaterial = value
+        if not value then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    RestoreChamsMaterial(plr.Character)
+                end
+            end
+        end
+    end
+})
+
+ChamsGroup:AddDropdown("ChamsMaterial", {
+    Text = "Material",
+    Values = MaterialNames,
+    Default = Chams.MaterialName,
+    Callback = function(value)
+        Chams.MaterialName = value
+        Chams.Material = Enum.Material[value]
     end
 })
 
@@ -895,6 +1219,40 @@ FlyGroup:AddSlider("FlySpeed", {
     end
 })
 
+local HitboxGroup = MiscTab:AddGroupbox({
+    Name = "Hitbox Expander",
+    Side = 2
+})
+
+HitboxGroup:AddToggle("HitboxExpanderEnabled", {
+    Text = "Enabled",
+    Default = false,
+    Callback = function(value)
+        SetHitboxExpanderEnabled(value)
+    end
+})
+
+HitboxGroup:AddSlider("HitboxExpanderScale", {
+    Text = "Scale",
+    Min = 1,
+    Max = 5,
+    Default = 1.5,
+    Rounding = 2,
+    Callback = function(value)
+        SetHitboxExpanderScale(value)
+    end
+})
+
+HitboxGroup:AddDropdown("HitboxExpanderParts", {
+    Text = "Hitboxes",
+    Values = HitboxExpanderPartNames,
+    Default = { "Head" },
+    Multi = true,
+    Callback = function(value)
+        SetHitboxExpanderParts(value)
+    end
+})
+
 local SettingsTab = Window:AddTab("Settings")
 
 local UnloadGroup = SettingsTab:AddGroupbox({
@@ -914,6 +1272,7 @@ local function UnloadScript()
     end
     SetFullbrightEnabled(false)
     SetCustomTimeEnabled(false)
+    SetHitboxExpanderEnabled(false)
     flying = false
     Fly.Enabled = false
     if HRP then HRP.Anchored = false end
