@@ -1204,10 +1204,12 @@ do
 
                 local Key = KeyPicker.Value;
 
-                if Key == 'MB1' or Key == 'MB2' or Key == 'MB3' then
+                if Key == 'MB1' or Key == 'MB2' or Key == 'MB3' or Key == 'MB4' or Key == 'MB5' then
                     return Key == 'MB1' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
                         or Key == 'MB2' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-                        or Key == 'MB3' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton3);
+                        or Key == 'MB3' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton3)
+                        or Key == 'MB4' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton4)
+                        or Key == 'MB5' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton5);
                 else
                     return InputService:IsKeyDown(Enum.KeyCode[KeyPicker.Value]);
                 end;
@@ -1297,6 +1299,10 @@ do
                         Key = 'MB2';
                     elseif NewInput.UserInputType == Enum.UserInputType.MouseButton3 then
                         Key = 'MB3';
+                    elseif NewInput.UserInputType == Enum.UserInputType.MouseButton4 then
+                        Key = 'MB4';
+                    elseif NewInput.UserInputType == Enum.UserInputType.MouseButton5 then
+                        Key = 'MB5';
                     end;
 
                     if not Key then
@@ -1326,10 +1332,12 @@ do
                 if KeyPicker.Mode == 'Toggle' then
                     local Key = KeyPicker.Value;
 
-                    if Key == 'MB1' or Key == 'MB2' or Key == 'MB3' then
+                    if Key == 'MB1' or Key == 'MB2' or Key == 'MB3' or Key == 'MB4' or Key == 'MB5' then
                         if Key == 'MB1' and Input.UserInputType == Enum.UserInputType.MouseButton1
                         or Key == 'MB2' and Input.UserInputType == Enum.UserInputType.MouseButton2
-                        or Key == 'MB3' and Input.UserInputType == Enum.UserInputType.MouseButton3 then
+                        or Key == 'MB3' and Input.UserInputType == Enum.UserInputType.MouseButton3
+                        or Key == 'MB4' and Input.UserInputType == Enum.UserInputType.MouseButton4
+                        or Key == 'MB5' and Input.UserInputType == Enum.UserInputType.MouseButton5 then
                             KeyPicker.Toggled = not KeyPicker.Toggled
                             KeyPicker:DoClick()
                         end;

@@ -238,12 +238,39 @@ local function IsPartVisible(targetCharacter, part)
         return true
     end
 
-    return result.Instance and result.Instance:IsDescendantOf(targetCharacter)
+    if not result.Instance then
+        return false
+    end
+
+    if not result.Instance:IsDescendantOf(targetCharacter) then
+        return false
+    end
+
+    if result.Instance == part then
+        return true
+    end
+
+    if part.Name == "Head" then
+        return true
+    end
+
+    return false
 end
 
 local function GetBestAimPartForCharacter(targetCharacter)
     local preferred = Aimbot.PreferredHitbox
     local center = Camera.ViewportSize / 2
+    local preferredPart = preferred and targetCharacter:FindFirstChild(preferred) or nil
+    if preferredPart and preferredPart:IsA("BasePart") then
+        local screenPos, onScreen = Camera:WorldToScreenPoint(preferredPart.Position)
+        if onScreen and screenPos.Z > 0 then
+            local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+            if screenDist <= Aimbot.FOV and IsPartVisible(targetCharacter, preferredPart) then
+                return preferredPart
+            end
+        end
+    end
+
     local bestPart = nil
     local bestScore = math.huge
 
@@ -256,9 +283,6 @@ local function GetBestAimPartForCharacter(targetCharacter)
                 if screenDist <= Aimbot.FOV and IsPartVisible(targetCharacter, part) then
                     local worldDist = (part.Position - Camera.CFrame.Position).Magnitude
                     local score = screenDist + (worldDist * 0.02)
-                    if partName == preferred then
-                        score = score - 35
-                    end
 
                     if score < bestScore then
                         bestScore = score
@@ -634,6 +658,8 @@ local lastTeleportTick = 0
 local flyBodyVelocity = nil
 local flyBodyGyro = nil
 local flyNoclipTracked = nil
+local flyOriginalPlatformStand = nil
+local flyOriginalAutoRotate = nil
 local FlyToggleControl = nil
 local FlyBind = nil
 local FlyTeleportBind = nil
@@ -829,6 +855,12 @@ local function IsBindMatch(optionOrValue, input)
     if bind == "MB3" then
         return input.UserInputType == Enum.UserInputType.MouseButton3
     end
+    if bind == "MB4" then
+        return input.UserInputType == Enum.UserInputType.MouseButton4
+    end
+    if bind == "MB5" then
+        return input.UserInputType == Enum.UserInputType.MouseButton5
+    end
 
     return input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name == bind
 end
@@ -949,6 +981,11 @@ local function startFly()
         HRP.Anchored = true
     else
         HRP.Anchored = false
+        flyOriginalPlatformStand = Humanoid.PlatformStand
+        flyOriginalAutoRotate = Humanoid.AutoRotate
+        Humanoid.PlatformStand = true
+        Humanoid.AutoRotate = false
+        Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
         SetupPhysicsFly()
         SetCharacterNoclipEnabled(true)
     end
@@ -960,6 +997,18 @@ local function stopFly(teleportToYellow)
     HRP.Anchored = false
     TeardownPhysicsFly()
     SetCharacterNoclipEnabled(false)
+    if flyOriginalPlatformStand ~= nil then
+        Humanoid.PlatformStand = flyOriginalPlatformStand
+        flyOriginalPlatformStand = nil
+    else
+        Humanoid.PlatformStand = false
+    end
+    if flyOriginalAutoRotate ~= nil then
+        Humanoid.AutoRotate = flyOriginalAutoRotate
+        flyOriginalAutoRotate = nil
+    else
+        Humanoid.AutoRotate = true
+    end
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
@@ -1073,6 +1122,10 @@ AddConnection(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     flying = false
     Fly.Enabled = false
     destroyGhosts()
+    TeardownPhysicsFly()
+    flyNoclipTracked = nil
+    flyOriginalPlatformStand = nil
+    flyOriginalAutoRotate = nil
 end))
 
 local Window = Library:CreateWindow({
