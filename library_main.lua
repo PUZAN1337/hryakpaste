@@ -3703,5 +3703,3 @@ for i,v in pairs(({"Internal","HttpCache","Instances","Signals","Script","Physic
     memorystats.restore(v)
 end
 return Library, Toggles, Options -- stupid fix for getgenv() not working...
-
-print ("main lib loaded")
