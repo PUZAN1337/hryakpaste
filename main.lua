@@ -56,6 +56,7 @@ local ScriptEnabled = true
 local AllConnections = {}
 local AllDrawings = {}
 local AllHighlights = {}
+local AimbotAimBind = nil
 
 local function AddConnection(conn)
     if conn then
@@ -271,6 +272,13 @@ do
     MaterialNames = { "ForceField", "Foil", "Glass", "Ice", "Metal" }
 end
 
+local function GetAimCenter()
+    if Aimbot and Aimbot.AimMethod == "MouseMoveRel" and UserInputService and UserInputService.GetMouseLocation then
+        return UserInputService:GetMouseLocation()
+    end
+    return Camera.ViewportSize / 2
+end
+
 local function GetMouseMoveRelFunction()
     local env = getgenv and getgenv() or _G
     local candidates = {
@@ -388,7 +396,7 @@ end
 
 local function GetBestAimPartForCharacter(targetCharacter)
     local preferred = Aimbot.PreferredHitbox
-    local center = Camera.ViewportSize / 2
+    local center = GetAimCenter()
     local preferredPart = preferred and targetCharacter:FindFirstChild(preferred) or nil
     if preferredPart and preferredPart:IsA("BasePart") then
         local screenPos, onScreen = Camera:WorldToScreenPoint(preferredPart.Position)
@@ -430,7 +438,7 @@ local function GetBestTarget()
     local bestPart = nil
     local bestScore = math.huge
     local preferred = Aimbot.PreferredHitbox
-    local center = Camera.ViewportSize / 2
+    local center = GetAimCenter()
 
     for _, target in ipairs(AimbotCache.targets) do
         local char = target.char
@@ -481,7 +489,7 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     FOVring.Visible = Aimbot.ShowFOV
     FOVring.Radius = Aimbot.FOV
     FOVring.Color = Aimbot.FOVColor
-    FOVring.Position = Camera.ViewportSize / 2
+    FOVring.Position = GetAimCenter()
     
     local pressed
     if AimbotAimBind and AimbotAimBind.GetState then
@@ -489,8 +497,6 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     else
         pressed = UserInputService:IsMouseButtonPressed(Aimbot.Key)
     end
-    local center = Camera.ViewportSize / 2
-    
     if pressed then
         local _, aimPart = GetBestTarget()
         if aimPart then
@@ -499,7 +505,7 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
                 if mover then
                     local screenPos, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
                     if onScreen and screenPos.Z > 0 then
-                        local delta = Vector2.new(screenPos.X, screenPos.Y) - center
+                        local delta = Vector2.new(screenPos.X, screenPos.Y) - GetAimCenter()
                         local factor = math.clamp(Aimbot.Smoothing, 0.01, 1)
                         local mx = (delta.X * factor) + MouseMover.residualX
                         local my = (delta.Y * factor) + MouseMover.residualY
@@ -805,7 +811,7 @@ local FlyToggleControl = nil
 local FlyBind = nil
 local FlyTeleportBind = nil
 local FlyPlaceBind = nil
-local AimbotAimBind = nil
+AimbotAimBind = nil
 local UnloadBind = nil
 local HitboxExpanderToggle = nil
 
