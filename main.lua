@@ -291,7 +291,12 @@ local function IsPartVisible(targetCharacter, part)
 
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = { Character }
+    local myChar = LocalPlayer and LocalPlayer.Character or nil
+    if myChar then
+        params.FilterDescendantsInstances = { myChar }
+    else
+        params.FilterDescendantsInstances = {}
+    end
     params.IgnoreWater = true
 
     local result = workspace:Raycast(cameraPos, direction, params)
@@ -318,11 +323,26 @@ local function IsPartVisible(targetCharacter, part)
     return false
 end
 
+local function FindCharacterPart(character, partName)
+    if not character then
+        return nil
+    end
+    local part = character:FindFirstChild(partName)
+    if part and part:IsA("BasePart") then
+        return part
+    end
+    part = character:FindFirstChild(partName, true)
+    if part and part:IsA("BasePart") then
+        return part
+    end
+    return nil
+end
+
 local function GetBestAimPartForCharacter(targetCharacter)
     local preferred = Aimbot.PreferredHitbox
     local center = Camera.ViewportSize / 2
-    local preferredPart = preferred and targetCharacter:FindFirstChild(preferred) or nil
-    if preferredPart and preferredPart:IsA("BasePart") then
+    local preferredPart = preferred and FindCharacterPart(targetCharacter, preferred) or nil
+    if preferredPart then
         local screenPos, onScreen = Camera:WorldToScreenPoint(preferredPart.Position)
         if onScreen and screenPos.Z > 0 then
             local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
@@ -336,13 +356,18 @@ local function GetBestAimPartForCharacter(targetCharacter)
     local bestScore = math.huge
 
     for _, partName in ipairs(AimbotHitboxNames) do
-        local part = targetCharacter:FindFirstChild(partName)
-        if part and part:IsA("BasePart") then
+        local part = FindCharacterPart(targetCharacter, partName)
+        if part then
             local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
             if onScreen and screenPos.Z > 0 then
                 local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
                 if screenDist <= Aimbot.FOV and ((not Aimbot.OnlyVisible) or IsPartVisible(targetCharacter, part)) then
                     local score = screenDist
+                    if partName == preferred then
+                        score = score - 25
+                    elseif partName == "Head" then
+                        score = score - 8
+                    end
 
                     if score < bestScore then
                         bestScore = score
