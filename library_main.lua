@@ -1015,8 +1015,18 @@ do
 
         assert(Info.Default, 'AddKeyPicker: Missing default value.');
 
+        local function NormalizeKeyName(Key)
+            if Key == nil then
+                return 'NONE'
+            end
+            if Key == 'None' then
+                return 'NONE'
+            end
+            return Key
+        end
+
         local KeyPicker = {
-            Value = Info.Default;
+            Value = NormalizeKeyName(Info.Default);
             Toggled = false;
             Mode = Info.Mode or 'Toggle'; -- Always, Toggle, Hold
             Type = 'KeyPicker';
@@ -1029,7 +1039,10 @@ do
         if KeyPicker.SyncToggleState then
             Info.Modes = { 'Toggle' }
             Info.Mode = 'Toggle'
+            KeyPicker.Mode = 'Toggle'
         end
+
+        local Modes = Info.Modes or { 'Always', 'Toggle', 'Hold' };
 
         local PickOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
@@ -1065,7 +1078,7 @@ do
         local ModeSelectOuter = Library:Create('Frame', {
             BorderColor3 = Color3.new(0, 0, 0);
             Position = UDim2.fromOffset(ToggleLabel.AbsolutePosition.X + ToggleLabel.AbsoluteSize.X + 4, ToggleLabel.AbsolutePosition.Y + 1);
-            Size = UDim2.new(0, 60, 0, 45 + 2);
+            Size = UDim2.new(0, 60, 0, (#Modes * 15) + 2);
             Visible = false;
             ZIndex = 14;
             Parent = ScreenGui;
@@ -1104,7 +1117,6 @@ do
             Parent = Library.KeybindContainer;
         },  true);
 
-        local Modes = Info.Modes or { 'Always', 'Toggle', 'Hold' };
         local ModeButtons = {};
 
         for Idx, Mode in next, Modes do
@@ -1186,15 +1198,16 @@ do
             if KeyPicker.Mode == 'Always' then
                 return true;
             elseif KeyPicker.Mode == 'Hold' then
-                if KeyPicker.Value == 'None' then
+                if KeyPicker.Value == 'None' or KeyPicker.Value == 'NONE' then
                     return false;
                 end
 
                 local Key = KeyPicker.Value;
 
-                if Key == 'MB1' or Key == 'MB2' then
+                if Key == 'MB1' or Key == 'MB2' or Key == 'MB3' then
                     return Key == 'MB1' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
-                        or Key == 'MB2' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2);
+                        or Key == 'MB2' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+                        or Key == 'MB3' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton3);
                 else
                     return InputService:IsKeyDown(Enum.KeyCode[KeyPicker.Value]);
                 end;
@@ -1205,9 +1218,12 @@ do
 
         function KeyPicker:SetValue(Data)
             local Key, Mode = Data[1], Data[2];
+            Key = NormalizeKeyName(Key)
             DisplayLabel.Text = Key;
             KeyPicker.Value = Key;
-            ModeButtons[Mode]:Select();
+            if Mode and ModeButtons[Mode] then
+                ModeButtons[Mode]:Select();
+            end
             KeyPicker:Update();
         end;
 
@@ -1265,7 +1281,7 @@ do
 
                     if Input.UserInputType == Enum.UserInputType.Keyboard then
                         if Input.KeyCode == Enum.KeyCode.Escape then
-                            Key = 'None';
+                            Key = 'NONE';
                         else
                             Key = Input.KeyCode.Name;
                         end
@@ -1273,13 +1289,15 @@ do
                         Key = 'MB1';
                     elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
                         Key = 'MB2';
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton3 then
+                        Key = 'MB3';
                     end;
 
                     Break = true;
                     Picking = false;
 
                     DisplayLabel.Text = Key;
-                    KeyPicker.Value = Key;
+                    KeyPicker.Value = NormalizeKeyName(Key);
 
                     Library:SafeCallback(KeyPicker.ChangedCallback, Input.KeyCode or Input.UserInputType)
                     Library:SafeCallback(KeyPicker.Changed, Input.KeyCode or Input.UserInputType)
@@ -1298,9 +1316,10 @@ do
                 if KeyPicker.Mode == 'Toggle' then
                     local Key = KeyPicker.Value;
 
-                    if Key == 'MB1' or Key == 'MB2' then
+                    if Key == 'MB1' or Key == 'MB2' or Key == 'MB3' then
                         if Key == 'MB1' and Input.UserInputType == Enum.UserInputType.MouseButton1
-                        or Key == 'MB2' and Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                        or Key == 'MB2' and Input.UserInputType == Enum.UserInputType.MouseButton2
+                        or Key == 'MB3' and Input.UserInputType == Enum.UserInputType.MouseButton3 then
                             KeyPicker.Toggled = not KeyPicker.Toggled
                             KeyPicker:DoClick()
                         end;
@@ -1337,6 +1356,15 @@ do
         Options[Idx] = KeyPicker;
 
         return self;
+    end;
+
+    function Funcs:AddBinder(Idx, Info)
+        Info = Info or {}
+        Info.Default = Info.Default or 'NONE'
+        Info.Mode = Info.Mode or 'Toggle'
+        Info.Modes = Info.Modes or { 'Hold', 'Toggle' }
+        Info.Text = Info.Text or 'Binder'
+        return Funcs.AddKeyPicker(self, Idx, Info)
     end;
 
     BaseAddons.__index = Funcs;

@@ -22,9 +22,21 @@ local encoded_lib2 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLW
 local encoded_lib3 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
 
 -- xru
-local Library = loadstring(game:HttpGet(dec(encoded_lib1)))()
+local getgenv = getgenv or function()
+    return _G
+end
+
+local Library, Toggles, Options = loadstring(game:HttpGet(dec(encoded_lib1)))()
 local SaveManager = loadstring(game:HttpGet(dec(encoded_lib2)))()
 local ThemeManager = loadstring(game:HttpGet(dec(encoded_lib3)))()
+
+if SaveManager and SaveManager.SetOptionsTEMP then
+    SaveManager:SetOptionsTEMP(Options, Toggles)
+end
+
+if ThemeManager and ThemeManager.SetOptionsTEMP then
+    ThemeManager:SetOptionsTEMP(Options, Toggles)
+end
 
 -- end
 
@@ -227,7 +239,12 @@ local AimbotConnection = AddConnection(RunService.RenderStepped:Connect(function
     FOVring.Color = Aimbot.FOVColor
     FOVring.Position = Camera.ViewportSize / 2
     
-    local pressed = UserInputService:IsMouseButtonPressed(Aimbot.Key)
+    local pressed
+    if AimbotAimBind and AimbotAimBind.GetState then
+        pressed = AimbotAimBind:GetState()
+    else
+        pressed = UserInputService:IsMouseButtonPressed(Aimbot.Key)
+    end
     local center = Camera.ViewportSize / 2
     
     if pressed then
@@ -327,62 +344,108 @@ AddConnection(Players.PlayerAdded:Connect(function(plr)
 end))
 
 local Fullbright = {
-    Enabled = false
+    Enabled = false,
+    Color = Color3.new(1, 1, 1),
 }
 
-local OriginalLighting = nil
-local FullbrightConnection = nil
+local CustomTime = {
+    Enabled = false,
+    Time = 12,
+}
 
-local function ApplyFullbright()
-    if not ScriptEnabled then return end
-    if not Fullbright.Enabled then return end
-    if not OriginalLighting then
-        OriginalLighting = {
-            Brightness = Lighting.Brightness,
-            Ambient = Lighting.Ambient,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-            GlobalShadows = Lighting.GlobalShadows,
-            FogEnd = Lighting.FogEnd,
-            ClockTime = Lighting.ClockTime,
-            GeographicLatitude = Lighting.GeographicLatitude,
-            Technology = Lighting.Technology
-        }
+local WorldLighting = {
+    Original = nil,
+    Connection = nil,
+}
+
+local function CaptureWorldOriginal()
+    if WorldLighting.Original then
+        return
     end
 
-    Lighting.Brightness = 0
-    Lighting.Ambient = Color3.new(1, 1, 1)
-    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 1e10
-    Lighting.ClockTime = 12
-    Lighting.GeographicLatitude = 0
-    Lighting.Technology = Enum.Technology.ShadowMap
+    WorldLighting.Original = {
+        Brightness = Lighting.Brightness,
+        Ambient = Lighting.Ambient,
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+        GlobalShadows = Lighting.GlobalShadows,
+        FogEnd = Lighting.FogEnd,
+        ClockTime = Lighting.ClockTime,
+        GeographicLatitude = Lighting.GeographicLatitude,
+        Technology = Lighting.Technology,
+    }
+end
+
+local function RestoreWorldOriginal()
+    local original = WorldLighting.Original
+    if not original then
+        return
+    end
+
+    Lighting.Brightness = original.Brightness
+    Lighting.Ambient = original.Ambient
+    Lighting.OutdoorAmbient = original.OutdoorAmbient
+    Lighting.GlobalShadows = original.GlobalShadows
+    Lighting.FogEnd = original.FogEnd
+    Lighting.ClockTime = original.ClockTime
+    Lighting.GeographicLatitude = original.GeographicLatitude
+    Lighting.Technology = original.Technology
+end
+
+local function ApplyWorldLighting()
+    if not ScriptEnabled then
+        return
+    end
+
+    CaptureWorldOriginal()
+    RestoreWorldOriginal()
+
+    if Fullbright.Enabled then
+        Lighting.Brightness = 0
+        Lighting.Ambient = Fullbright.Color
+        Lighting.OutdoorAmbient = Fullbright.Color
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 1e10
+        Lighting.GeographicLatitude = 0
+        Lighting.Technology = Enum.Technology.ShadowMap
+    end
+
+    if CustomTime.Enabled then
+        Lighting.ClockTime = CustomTime.Time
+    end
+end
+
+local function UpdateWorldLightingConnection()
+    local shouldRun = Fullbright.Enabled or CustomTime.Enabled
+
+    if shouldRun and not WorldLighting.Connection then
+        WorldLighting.Connection = RunService.Heartbeat:Connect(ApplyWorldLighting)
+        AddConnection(WorldLighting.Connection)
+        ApplyWorldLighting()
+        return
+    end
+
+    if (not shouldRun) and WorldLighting.Connection then
+        WorldLighting.Connection:Disconnect()
+        WorldLighting.Connection = nil
+        RestoreWorldOriginal()
+        WorldLighting.Original = nil
+    end
 end
 
 local function SetFullbrightEnabled(state)
     Fullbright.Enabled = state
-    
-    if state then
-        if not FullbrightConnection then
-            FullbrightConnection = RunService.Heartbeat:Connect(ApplyFullbright)
-            AddConnection(FullbrightConnection)
-        end
-        ApplyFullbright()
-    else
-        if FullbrightConnection then
-            FullbrightConnection:Disconnect()
-            FullbrightConnection = nil
-        end
-        if OriginalLighting then
-            Lighting.Brightness = OriginalLighting.Brightness
-            Lighting.Ambient = OriginalLighting.Ambient
-            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
-            Lighting.GlobalShadows = OriginalLighting.GlobalShadows
-            Lighting.FogEnd = OriginalLighting.FogEnd
-            Lighting.ClockTime = OriginalLighting.ClockTime
-            Lighting.GeographicLatitude = OriginalLighting.GeographicLatitude
-            Lighting.Technology = OriginalLighting.Technology
-        end
+    UpdateWorldLightingConnection()
+end
+
+local function SetCustomTimeEnabled(state)
+    CustomTime.Enabled = state
+    UpdateWorldLightingConnection()
+end
+
+local function SetCustomTimeValue(value)
+    CustomTime.Time = value
+    if CustomTime.Enabled then
+        ApplyWorldLighting()
     end
 end
 
@@ -393,7 +456,6 @@ local HRP = Character:WaitForChild("HumanoidRootPart")
 local Fly = {
     Enabled = false,
     Speed = 80,
-    Key = Enum.KeyCode.B
 }
 
 local flying = false
@@ -401,13 +463,44 @@ local speed = Fly.Speed
 local keys = {
     W = false, A = false, S = false, D = false,
     Space = false, LeftShift = false,
-    N = false
 }
 
 local blueGhost = nil
 local yellowGhost = nil
 local lastTeleportPos = nil
-local teleportCoroutine = nil
+local lastTeleportTick = 0
+local FlyToggleControl = nil
+local FlyBind = nil
+local FlyTeleportBind = nil
+local FlyPlaceBind = nil
+local AimbotAimBind = nil
+local UnloadBind = nil
+
+local function GetBindValue(optionOrValue)
+    if type(optionOrValue) == "table" and optionOrValue.Value ~= nil then
+        return optionOrValue.Value
+    end
+    return optionOrValue
+end
+
+local function IsBindMatch(optionOrValue, input)
+    local bind = GetBindValue(optionOrValue)
+    if bind == nil or bind == "None" or bind == "NONE" then
+        return false
+    end
+
+    if bind == "MB1" then
+        return input.UserInputType == Enum.UserInputType.MouseButton1
+    end
+    if bind == "MB2" then
+        return input.UserInputType == Enum.UserInputType.MouseButton2
+    end
+    if bind == "MB3" then
+        return input.UserInputType == Enum.UserInputType.MouseButton3
+    end
+
+    return input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name == bind
+end
 
 local function createGhost(colorName, position)
     if colorName ~= "Blue" and colorName ~= "Yellow" then return nil end
@@ -486,33 +579,11 @@ local function placeYellowGhostAtMouse(input)
     yellowGhost = createGhost("Yellow", targetPos)
 end
 
-local function startTeleportLoop()
-    if teleportCoroutine then return end
-    teleportCoroutine = task.spawn(function()
-        while keys.N and ScriptEnabled do
-            if lastTeleportPos then
-                teleportToPosition(lastTeleportPos)
-            end
-            task.wait(0.1)
-        end
-        teleportCoroutine = nil
-    end)
-end
-
 AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not ScriptEnabled then return end
     if gameProcessed then return end
 
-    if input.KeyCode == Fly.Key then
-        if not flying then
-            startFly()
-        else
-            stopFly(true)
-        end
-    elseif input.KeyCode == Enum.KeyCode.N then
-        keys.N = true
-        startTeleportLoop()
-    elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+    if flying and IsBindMatch(Options and Options.FlyPlaceBind, input) then
         placeYellowGhostAtMouse(input)
     elseif input.KeyCode == Enum.KeyCode.W then keys.W = true
     elseif input.KeyCode == Enum.KeyCode.A then keys.A = true
@@ -531,12 +602,26 @@ AddConnection(UserInputService.InputEnded:Connect(function(input, gameProcessed)
     elseif input.KeyCode == Enum.KeyCode.D then keys.D = false
     elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = false
     elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = false
-    elseif input.KeyCode == Enum.KeyCode.N then keys.N = false
     end
 end))
 
 AddConnection(RunService.RenderStepped:Connect(function()
     if not ScriptEnabled then return end
+    if FlyToggleControl and FlyBind and FlyBind.GetState and FlyBind.Mode == "Hold" then
+        local desired = FlyBind:GetState()
+        if desired ~= FlyToggleControl.Value then
+            FlyToggleControl:SetValue(desired)
+        end
+    end
+
+    if FlyTeleportBind and FlyTeleportBind.GetState and FlyTeleportBind:GetState() and lastTeleportPos then
+        local now = tick()
+        if now - lastTeleportTick >= 0.1 then
+            lastTeleportTick = now
+            teleportToPosition(lastTeleportPos)
+        end
+    end
+
     if flying and HRP then
         local moveDirection = Vector3.new(0, 0, 0)
         local lookVector = Camera.CFrame.LookVector
@@ -563,10 +648,6 @@ AddConnection(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     flying = false
     Fly.Enabled = false
     destroyGhosts()
-    if teleportCoroutine then
-        keys.N = false
-        teleportCoroutine = nil
-    end
 end))
 
 local Window = Library:CreateWindow({
@@ -645,9 +726,20 @@ AimbotSettings:AddSlider("AimbotSmoothing", {
     end
 })
 
-AddColorPickerAlternative(AimbotSettings, "FOV Color", Aimbot.FOVColor, function(value)
-    Aimbot.FOVColor = value
-end)
+AimbotSettings:AddLabel("Aim bind"):AddBinder("AimbotAimBind", {
+    Text = "Aimbot Aim",
+    Default = "MB2",
+    Mode = "Hold",
+})
+AimbotAimBind = Options and Options.AimbotAimBind or nil
+
+AimbotSettings:AddLabel("FOV Color"):AddColorPicker("AimbotFOVColor", {
+    Default = Aimbot.FOVColor,
+    Title = "FOV Color",
+    Callback = function(value)
+        Aimbot.FOVColor = value
+    end
+})
 
 local VisualsTab = Window:AddTab("Visuals")
 
@@ -691,20 +783,54 @@ ChamsGroup:AddSlider("ChamsTransparency", {
     end
 })
 
-AddColorPickerAlternative(ChamsGroup, "Chams Color", Chams.Color, function(value)
-    Chams.Color = value
-end)
+ChamsGroup:AddLabel("Chams Color"):AddColorPicker("ChamsColor", {
+    Default = Chams.Color,
+    Title = "Chams Color",
+    Callback = function(value)
+        Chams.Color = value
+    end
+})
 
 local WorldGroup = VisualsTab:AddGroupbox({
     Name = "World",
     Side = 2
 })
 
-WorldGroup:AddToggle("FullbrightEnabled", {
+local FullbrightToggle = WorldGroup:AddToggle("FullbrightEnabled", {
     Text = "Fullbright",
     Default = false,
     Callback = function(value)
         SetFullbrightEnabled(value)
+    end
+})
+
+FullbrightToggle:AddColorPicker("FullbrightColor", {
+    Default = Fullbright.Color,
+    Title = "Fullbright Color",
+    Callback = function(value)
+        Fullbright.Color = value
+        if Fullbright.Enabled then
+            ApplyWorldLighting()
+        end
+    end
+})
+
+WorldGroup:AddToggle("CustomTimeEnabled", {
+    Text = "Custom Time",
+    Default = false,
+    Callback = function(value)
+        SetCustomTimeEnabled(value)
+    end
+})
+
+WorldGroup:AddSlider("CustomTime", {
+    Text = "Time",
+    Min = 0,
+    Max = 24,
+    Default = 12,
+    Rounding = 2,
+    Callback = function(value)
+        SetCustomTimeValue(value)
     end
 })
 
@@ -715,8 +841,8 @@ local FlyGroup = MiscTab:AddGroupbox({
     Side = 1
 })
 
-FlyGroup:AddToggle("puzo exploit", {
-    Text = "Enabled (Press B)",
+FlyToggleControl = FlyGroup:AddToggle("puzo exploit", {
+    Text = "Enabled",
     Default = false,
     Callback = function(value)
         if value then
@@ -724,8 +850,39 @@ FlyGroup:AddToggle("puzo exploit", {
         else
             stopFly(true)
         end
+
+        if FlyBind and FlyBind.Mode == "Toggle" and FlyBind.Update then
+            FlyBind.Toggled = value
+            FlyBind:Update()
+        end
     end
 })
+
+FlyToggleControl:AddBinder("FlyBind", {
+    Text = "Fly",
+    Default = "B",
+    Mode = "Toggle",
+    Callback = function(state)
+        if FlyToggleControl then
+            FlyToggleControl:SetValue(state)
+        end
+    end
+})
+FlyBind = Options and Options.FlyBind or nil
+
+FlyGroup:AddLabel("Teleport bind"):AddBinder("FlyTeleportBind", {
+    Text = "Teleport",
+    Default = "N",
+    Mode = "Hold",
+})
+FlyTeleportBind = Options and Options.FlyTeleportBind or nil
+
+FlyGroup:AddLabel("Place marker bind"):AddBinder("FlyPlaceBind", {
+    Text = "Place marker",
+    Default = "MB3",
+    Mode = "Hold",
+})
+FlyPlaceBind = Options and Options.FlyPlaceBind or nil
 
 FlyGroup:AddSlider("FlySpeed", {
     Text = "Speed",
@@ -745,7 +902,7 @@ local UnloadGroup = SettingsTab:AddGroupbox({
     Side = 1
 })
 
-UnloadGroup:AddButton("Unload Script", function()
+local function UnloadScript()
     ScriptEnabled = false
     Aimbot.Enabled = false
     FOVring:Remove()
@@ -756,6 +913,7 @@ UnloadGroup:AddButton("Unload Script", function()
         end
     end
     SetFullbrightEnabled(false)
+    SetCustomTimeEnabled(false)
     flying = false
     Fly.Enabled = false
     if HRP then HRP.Anchored = false end
@@ -765,10 +923,6 @@ UnloadGroup:AddButton("Unload Script", function()
         Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
     end
     destroyGhosts()
-    if teleportCoroutine then
-        keys.N = false
-        teleportCoroutine = nil
-    end
     for _, conn in ipairs(AllConnections) do
         if conn then pcall(function() conn:Disconnect() end) end
     end
@@ -781,11 +935,34 @@ UnloadGroup:AddButton("Unload Script", function()
     table.clear(AllConnections)
     table.clear(AllDrawings)
     table.clear(AllHighlights)
-    getgenv().Toggles = nil
-    getgenv().Options = nil
-end)
+    pcall(function()
+        getgenv().Toggles = nil
+        getgenv().Options = nil
+    end)
+end
 
-UnloadGroup:AddLabel("Hotkey: Delete to unload")
+UnloadGroup:AddButton("Unload Script", UnloadScript)
+
+UnloadGroup:AddLabel("Unload bind"):AddBinder("UnloadBind", {
+    Text = "Unload",
+    Default = "Delete",
+    Modes = { "Toggle" },
+    Mode = "Toggle",
+    Callback = function(state)
+        if not state then
+            return
+        end
+
+        UnloadScript()
+
+        local opt = Options and Options.UnloadBind
+        if opt then
+            opt.Toggled = false
+            opt:Update()
+        end
+    end
+})
+UnloadBind = Options and Options.UnloadBind or nil
 
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
@@ -799,28 +976,13 @@ ThemeManager:SetFolder("PuzoExploit/theme")
 ThemeManager:ApplyToTab(SettingsTab)
 
 AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.Delete then
-        if Library and Library.ScreenGui then
-            Library.ScreenGui:Destroy()
-        end
-        ScriptEnabled = false
-        Aimbot.Enabled = false
-        FOVring:Remove()
-        SetChamsEnabled(false)
-        SetFullbrightEnabled(false)
-        flying = false
-        Fly.Enabled = false
-        if HRP then HRP.Anchored = false end
-        destroyGhosts()
-        if teleportCoroutine then
-            keys.N = false
-            teleportCoroutine = nil
-        end
-        for _, conn in ipairs(AllConnections) do
-            if conn then pcall(function() conn:Disconnect() end) end
-        end
-        for _, drawing in ipairs(AllDrawings) do
-            if drawing then pcall(function() drawing:Remove() end) end
-        end
+    if gameProcessed then
+        return
+    end
+    if UnloadBind then
+        return
+    end
+    if input.KeyCode == Enum.KeyCode.Delete then
+        UnloadScript()
     end
 end))
