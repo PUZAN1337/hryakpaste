@@ -1,4 +1,4 @@
---mega b64 decode
+--[[mega b64 decode
 local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 local function dec(data)
     data = string.gsub(data, '[^'..b..'=]', '')
@@ -26,7 +26,7 @@ local Library = loadstring(game:HttpGet(dec(encoded_lib1)))()
 local SaveManager = loadstring(game:HttpGet(dec(encoded_lib2)))()
 local ThemeManager = loadstring(game:HttpGet(dec(encoded_lib3)))()
 
--- end
+-- end]]
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
