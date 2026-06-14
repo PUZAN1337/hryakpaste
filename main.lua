@@ -1,22 +1,14 @@
-print ("xru0")
+print ("xru0 - script started")
 
-loadstring (game:HttpGet("https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_main.lua"))()
-print ("xru")
-loadstring (game:HttpGet("https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_save.lua"))()
-loadstring (game:HttpGet("https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_theme.lua"))()
+-- Direct library URLs (no need for base64 decode)
+local libraryMainUrl = "https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_main.lua"
+local librarySaveUrl = "https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_save.lua"
+local libraryThemeUrl = "https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_theme.lua"
 
-print (xru1)
-
-local getgenv = getgenv or function()
-    return _G
-end
-
-print (xru2)
-
-local Library, Toggles, Options
+local Library, Toggles, Options = nil, nil, nil
 do
-    local url = dec(encoded_lib1)
-    local success, content = pcall(function() return game:HttpGet(url) end)
+    print("Loading Library from: " .. libraryMainUrl)
+    local success, content = pcall(function() return game:HttpGet(libraryMainUrl) end)
     if not success then
         warn("Failed to get Library content: " .. tostring(content))
     elseif not content then
@@ -31,6 +23,7 @@ do
             local success3, result = pcall(loadFunc)
             if success3 then
                 Library, Toggles, Options = result
+                print("Library loaded successfully")
             else
                 warn("Failed to execute Library: " .. tostring(result))
             end
@@ -38,14 +31,12 @@ do
     end
 end
 
-print (xru3)
+print ("xru1 - Library loading done")
 
-
-
-local SaveManager
+local SaveManager = nil
 do
-    local url = dec(encoded_lib2)
-    local success, content = pcall(function() return game:HttpGet(url) end)
+    print("Loading SaveManager from: " .. librarySaveUrl)
+    local success, content = pcall(function() return game:HttpGet(librarySaveUrl) end)
     if not success then
         warn("Failed to get SaveManager content: " .. tostring(content))
     elseif not content then
@@ -60,6 +51,7 @@ do
             local success3, result = pcall(loadFunc)
             if success3 then
                 SaveManager = result
+                print("SaveManager loaded successfully")
             else
                 warn("Failed to execute SaveManager: " .. tostring(result))
             end
@@ -67,12 +59,12 @@ do
     end
 end
 
-print (xru4)
+print ("xru2 - SaveManager loading done")
 
-local ThemeManager
+local ThemeManager = nil
 do
-    local url = dec(encoded_lib3)
-    local success, content = pcall(function() return game:HttpGet(url) end)
+    print("Loading ThemeManager from: " .. libraryThemeUrl)
+    local success, content = pcall(function() return game:HttpGet(libraryThemeUrl) end)
     if not success then
         warn("Failed to get ThemeManager content: " .. tostring(content))
     elseif not content then
@@ -87,7 +79,7 @@ do
             local success3, result = pcall(loadFunc)
             if success3 then
                 ThemeManager = result
-
+                print("ThemeManager loaded successfully")
             else
                 warn("Failed to execute ThemeManager: " .. tostring(result))
             end
@@ -95,7 +87,11 @@ do
     end
 end
 
-print (xru5)
+print ("xru3 - ThemeManager loading done")
+
+local getgenv = getgenv or function()
+    return _G
+end
 
 if SaveManager and SaveManager.SetOptionsTEMP then
     pcall(function()
@@ -103,17 +99,15 @@ if SaveManager and SaveManager.SetOptionsTEMP then
     end)
 end
 
-print (xru6)
-
 if ThemeManager and ThemeManager.SetOptionsTEMP then
     pcall(function()
         ThemeManager:SetOptionsTEMP(Options, Toggles)
     end)
 end
 
-print (xru7)
-
 -- end
+
+print ("xru4 - libraries setup done")
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -136,6 +130,8 @@ local function AddConnection(conn)
     return conn
 end
 
+print ("xru5 - AddConnection defined")
+
 local function AddDrawing(drawing)
     if drawing then
         table.insert(AllDrawings, drawing)
@@ -157,6 +153,8 @@ local AntiAFK = {
 }
 
 local AntiAFKConnection = nil
+
+print ("xru6 - AntiAFK defined")
 
 local function TryHookWalkDummy()
     if AntiAFK.HookedWalkDummy then
@@ -187,6 +185,8 @@ local function TryHookWalkDummy()
     return hooked
 end
 
+print ("xru7 - TryHookWalkDummy defined")
+
 local function SetAntiAFKEnabled(state)
     AntiAFK.Enabled = state
 
@@ -214,6 +214,8 @@ local function SetAntiAFKEnabled(state)
         AntiAFKConnection = nil
     end
 end
+
+print ("xru8 - SetAntiAFKEnabled defined")
 
 local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
     local r, g, b = defaultColor.R * 255, defaultColor.G * 255, defaultColor.B * 255
@@ -264,6 +266,8 @@ local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
     }
 end
 
+print ("xru9 - AddColorPickerAlternative defined")
+
 local Aimbot = {
     Enabled = false,
     TeamCheck = true,
@@ -302,15 +306,15 @@ local function UpdateAimbotPlayerCache()
     if not ScriptEnabled then return end
     local newTargets = {}
     
-    for unused, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local char = player.Character
+    for unused, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local char = plr.Character
             if char then
-                local humanoid = char:FindFirstChild("Humanoid")
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
                 if humanoid and humanoid.Health > 0 then
-                    if Aimbot.TeamCheck and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+                    if Aimbot.TeamCheck and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
                     else
-                        table.insert(newTargets, {char = char, humanoid = humanoid, isPlayer = true, player = player})
+                        table.insert(newTargets, {char = char, humanoid = humanoid, isPlayer = true, player = plr})
                     end
                 end
             end
@@ -333,8 +337,8 @@ local function UpdateAimbotNPCCache()
                     continue
                 end
                 local isPlayerChar = false
-                for unused, player in ipairs(Players:GetPlayers()) do
-                    if player.Character == model then
+                for unused, plr in ipairs(Players:GetPlayers()) do
+                    if plr.Character == model then
                         isPlayerChar = true
                         break
                     end
@@ -591,6 +595,8 @@ AddConnection(Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
     FOVring.Position = Camera.ViewportSize / 2
 end))
 
+print ("xru10 - Aimbot setup done")
+
 local Chams = {
     Enabled = false,
     Color = Color3.fromRGB(255, 0, 0),
@@ -727,6 +733,8 @@ AddConnection(Players.PlayerAdded:Connect(function(plr)
     end)
 end))
 
+print ("xru11 - Chams setup done")
+
 local Fullbright = {
     Enabled = false,
     Color = Color3.new(1, 1, 1),
@@ -832,6 +840,8 @@ local function SetCustomTimeValue(value)
         ApplyWorldLighting()
     end
 end
+
+print ("xru12 - World lighting setup done")
 
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
@@ -1031,6 +1041,8 @@ AddConnection(Players.PlayerRemoving:Connect(function(plr)
         RestoreHitboxesForCharacter(plr.Character)
     end
 end))
+
+print ("xru13 - Hitbox and Fly setup done")
 
 local function GetBindValue(optionOrValue)
     if type(optionOrValue) == "table" and optionOrValue.Value ~= nil then
@@ -1327,6 +1339,8 @@ AddConnection(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     flyOriginalAutoRotate = nil
 end))
 
+print ("xru14 - Fly controls setup done")
+
 if Library then
     local Window = Library:CreateWindow({
         Title = "HRYAK.HACK",
@@ -1490,273 +1504,273 @@ if Library then
     })
 
     ChamsGroup:AddToggle("ChamsApplyMaterial", {
-    Text = "Apply Material",
-    Default = true,
-    Callback = function(value)
-        Chams.ApplyMaterial = value
-        if not value then
-            for unused, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character then
-                    RestoreChamsMaterial(plr.Character)
+        Text = "Apply Material",
+        Default = true,
+        Callback = function(value)
+            Chams.ApplyMaterial = value
+            if not value then
+                for unused, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and plr.Character then
+                        RestoreChamsMaterial(plr.Character)
+                    end
                 end
             end
         end
-    end
-})
+    })
 
-ChamsGroup:AddDropdown("ChamsMaterial", {
-    Text = "Material",
-    Values = MaterialNames,
-    Default = Chams.MaterialName,
-    Callback = function(value)
-        Chams.MaterialName = value
-        Chams.Material = Enum.Material[value]
-    end
-})
-
-local WorldGroup = VisualsTab:AddGroupbox({
-    Name = "World",
-    Side = 2
-})
-
-local FullbrightToggle = WorldGroup:AddToggle("FullbrightEnabled", {
-    Text = "Fullbright",
-    Default = false,
-    Callback = function(value)
-        SetFullbrightEnabled(value)
-    end
-})
-
-FullbrightToggle:AddColorPicker("FullbrightColor", {
-    Default = Fullbright.Color,
-    Title = "Fullbright Color",
-    Callback = function(value)
-        Fullbright.Color = value
-        if Fullbright.Enabled then
-            ApplyWorldLighting()
+    ChamsGroup:AddDropdown("ChamsMaterial", {
+        Text = "Material",
+        Values = MaterialNames,
+        Default = Chams.MaterialName,
+        Callback = function(value)
+            Chams.MaterialName = value
+            Chams.Material = Enum.Material[value]
         end
-    end
-})
+    })
 
-WorldGroup:AddToggle("CustomTimeEnabled", {
-    Text = "Custom Time",
-    Default = false,
-    Callback = function(value)
-        SetCustomTimeEnabled(value)
-    end
-})
+    local WorldGroup = VisualsTab:AddGroupbox({
+        Name = "World",
+        Side = 2
+    })
 
-WorldGroup:AddSlider("CustomTime", {
-    Text = "Time",
-    Min = 0,
-    Max = 24,
-    Default = 12,
-    Rounding = 2,
-    Callback = function(value)
-        SetCustomTimeValue(value)
-    end
-})
-
-local MiscTab = Window:AddTab("Misc")
-
-local FlyGroup = MiscTab:AddGroupbox({
-    Name = "puzo exploit",
-    Side = 1
-})
-
-FlyToggleControl = FlyGroup:AddToggle("puzo exploit", {
-    Text = "Enabled",
-    Default = false,
-    Callback = function(value)
-        if value then
-            startFly()
-        else
-            stopFly(true)
+    local FullbrightToggle = WorldGroup:AddToggle("FullbrightEnabled", {
+        Text = "Fullbright",
+        Default = false,
+        Callback = function(value)
+            SetFullbrightEnabled(value)
         end
+    })
 
-        if FlyBind and FlyBind.Mode == "Toggle" and FlyBind.Update then
-            FlyBind.Toggled = value
-            FlyBind:Update()
+    FullbrightToggle:AddColorPicker("FullbrightColor", {
+        Default = Fullbright.Color,
+        Title = "Fullbright Color",
+        Callback = function(value)
+            Fullbright.Color = value
+            if Fullbright.Enabled then
+                ApplyWorldLighting()
+            end
         end
-    end
-})
+    })
 
-FlyToggleControl:AddBinder("FlyBind", {
-    Text = "Fly",
-    Default = "B",
-    Mode = "Toggle",
-    Callback = function(state)
-        if FlyToggleControl then
-            FlyToggleControl:SetValue(state)
+    WorldGroup:AddToggle("CustomTimeEnabled", {
+        Text = "Custom Time",
+        Default = false,
+        Callback = function(value)
+            SetCustomTimeEnabled(value)
         end
-    end
-})
-FlyBind = Options and Options.FlyBind or nil
+    })
 
-FlyGroup:AddLabel("Teleport bind"):AddBinder("FlyTeleportBind", {
-    Text = "Teleport",
-    Default = "N",
-    Mode = "Hold",
-})
-FlyTeleportBind = Options and Options.FlyTeleportBind or nil
-
-FlyGroup:AddLabel("Place marker bind"):AddBinder("FlyPlaceBind", {
-    Text = "Place marker",
-    Default = "MB3",
-    Mode = "Hold",
-})
-FlyPlaceBind = Options and Options.FlyPlaceBind or nil
-
-FlyGroup:AddToggle("FlyTeleportMode", {
-    Text = "Teleport Fly (Anchored)",
-    Default = true,
-    Callback = function(value)
-        Fly.TeleportMode = value
-        if flying then
-            stopFly(false)
-            startFly()
+    WorldGroup:AddSlider("CustomTime", {
+        Text = "Time",
+        Min = 0,
+        Max = 24,
+        Default = 12,
+        Rounding = 2,
+        Callback = function(value)
+            SetCustomTimeValue(value)
         end
-    end
-})
+    })
 
-FlyGroup:AddSlider("FlySpeed", {
-    Text = "Speed",
-    Min = 10,
-    Max = 200,
-    Default = 80,
-    Rounding = 0,
-    Callback = function(value)
-        Fly.Speed = value
-    end
-})
+    local MiscTab = Window:AddTab("Misc")
 
-local AntiAFKGroup = MiscTab:AddGroupbox({
-    Name = "Anti AFK",
-    Side = 1
-})
+    local FlyGroup = MiscTab:AddGroupbox({
+        Name = "puzo exploit",
+        Side = 1
+    })
 
-AntiAFKGroup:AddToggle("AntiAFKEnabled", {
-    Text = "Enabled",
-    Default = false,
-    Callback = function(value)
-        SetAntiAFKEnabled(value)
-    end
-})
+    FlyToggleControl = FlyGroup:AddToggle("puzo exploit", {
+        Text = "Enabled",
+        Default = false,
+        Callback = function(value)
+            if value then
+                startFly()
+            else
+                stopFly(true)
+            end
 
-AntiAFKGroup:AddToggle("AntiAFKHookWalkDummy", {
-    Text = "Hook WalkDummy",
-    Default = false,
-    Callback = function(value)
-        AntiAFK.HookWalkDummy = value
-        if value and AntiAFK.Enabled then
-            TryHookWalkDummy()
+            if FlyBind and FlyBind.Mode == "Toggle" and FlyBind.Update then
+                FlyBind.Toggled = value
+                FlyBind:Update()
+            end
         end
-    end
-})
+    })
 
-local HitboxGroup = MiscTab:AddGroupbox({
-    Name = "Hitbox Expander",
-    Side = 2
-})
-
-HitboxGroup:AddToggle("HitboxExpanderEnabled", {
-    Text = "Enabled",
-    Default = false,
-    Callback = function(value)
-        SetHitboxExpanderEnabled(value)
-    end
-})
-
-HitboxGroup:AddSlider("HitboxExpanderScale", {
-    Text = "Scale",
-    Min = 1,
-    Max = 5,
-    Default = 1.5,
-    Rounding = 2,
-    Callback = function(value)
-        SetHitboxExpanderScale(value)
-    end
-})
-
-HitboxGroup:AddDropdown("HitboxExpanderParts", {
-    Text = "Hitboxes",
-    Values = HitboxExpanderPartNames,
-    Default = { "Head" },
-    Multi = true,
-    Callback = function(value)
-        SetHitboxExpanderParts(value)
-    end
-})
-
-local SettingsTab = Window:AddTab("Settings")
-
-local UnloadGroup = SettingsTab:AddGroupbox({
-    Name = "Script Control",
-    Side = 1
-})
-
-local function UnloadScript()
-    ScriptEnabled = false
-    Aimbot.Enabled = false
-    FOVring:Remove()
-    SetChamsEnabled(false)
-    for unused, highlight in ipairs(AllHighlights) do
-        if highlight and highlight.Parent then
-            highlight:Destroy()
+    FlyToggleControl:AddBinder("FlyBind", {
+        Text = "Fly",
+        Default = "B",
+        Mode = "Toggle",
+        Callback = function(state)
+            if FlyToggleControl then
+                FlyToggleControl:SetValue(state)
+            end
         end
-    end
-    SetFullbrightEnabled(false)
-    SetCustomTimeEnabled(false)
-    SetHitboxExpanderEnabled(false)
-    flying = false
-    Fly.Enabled = false
-    if HRP then HRP.Anchored = false end
-    if Humanoid then
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-    end
-    destroyGhosts()
-    for unused, conn in ipairs(AllConnections) do
-        if conn then pcall(function() conn:Disconnect() end) end
-    end
-    for unused, drawing in ipairs(AllDrawings) do
-        if drawing then pcall(function() drawing:Remove() end) end
-    end
-    if Library and Library.ScreenGui then
-        Library.ScreenGui:Destroy()
-    end
-    table.clear(AllConnections)
-    table.clear(AllDrawings)
-    table.clear(AllHighlights)
-    pcall(function()
-        getgenv().Toggles = nil
-        getgenv().Options = nil
-    end)
-end
+    })
+    FlyBind = Options and Options.FlyBind or nil
 
-UnloadGroup:AddButton("Unload Script", UnloadScript)
+    FlyGroup:AddLabel("Teleport bind"):AddBinder("FlyTeleportBind", {
+        Text = "Teleport",
+        Default = "N",
+        Mode = "Hold",
+    })
+    FlyTeleportBind = Options and Options.FlyTeleportBind or nil
 
-UnloadGroup:AddLabel("Unload bind"):AddBinder("UnloadBind", {
-    Text = "Unload",
-    Default = "Delete",
-    Modes = { "Toggle" },
-    Mode = "Toggle",
-    Callback = function(state)
-        if not state then
-            return
+    FlyGroup:AddLabel("Place marker bind"):AddBinder("FlyPlaceBind", {
+        Text = "Place marker",
+        Default = "MB3",
+        Mode = "Hold",
+    })
+    FlyPlaceBind = Options and Options.FlyPlaceBind or nil
+
+    FlyGroup:AddToggle("FlyTeleportMode", {
+        Text = "Teleport Fly (Anchored)",
+        Default = true,
+        Callback = function(value)
+            Fly.TeleportMode = value
+            if flying then
+                stopFly(false)
+                startFly()
+            end
         end
+    })
 
-        UnloadScript()
-
-        local opt = Options and Options.UnloadBind
-        if opt then
-            opt.Toggled = false
-            opt:Update()
+    FlyGroup:AddSlider("FlySpeed", {
+        Text = "Speed",
+        Min = 10,
+        Max = 200,
+        Default = 80,
+        Rounding = 0,
+        Callback = function(value)
+            Fly.Speed = value
         end
+    })
+
+    local AntiAFKGroup = MiscTab:AddGroupbox({
+        Name = "Anti AFK",
+        Side = 1
+    })
+
+    AntiAFKGroup:AddToggle("AntiAFKEnabled", {
+        Text = "Enabled",
+        Default = false,
+        Callback = function(value)
+            SetAntiAFKEnabled(value)
+        end
+    })
+
+    AntiAFKGroup:AddToggle("AntiAFKHookWalkDummy", {
+        Text = "Hook WalkDummy",
+        Default = false,
+        Callback = function(value)
+            AntiAFK.HookWalkDummy = value
+            if value and AntiAFK.Enabled then
+                TryHookWalkDummy()
+            end
+        end
+    })
+
+    local HitboxGroup = MiscTab:AddGroupbox({
+        Name = "Hitbox Expander",
+        Side = 2
+    })
+
+    HitboxGroup:AddToggle("HitboxExpanderEnabled", {
+        Text = "Enabled",
+        Default = false,
+        Callback = function(value)
+            SetHitboxExpanderEnabled(value)
+        end
+    })
+
+    HitboxGroup:AddSlider("HitboxExpanderScale", {
+        Text = "Scale",
+        Min = 1,
+        Max = 5,
+        Default = 1.5,
+        Rounding = 2,
+        Callback = function(value)
+            SetHitboxExpanderScale(value)
+        end
+    })
+
+    HitboxGroup:AddDropdown("HitboxExpanderParts", {
+        Text = "Hitboxes",
+        Values = HitboxExpanderPartNames,
+        Default = { "Head" },
+        Multi = true,
+        Callback = function(value)
+            SetHitboxExpanderParts(value)
+        end
+    })
+
+    local SettingsTab = Window:AddTab("Settings")
+
+    local UnloadGroup = SettingsTab:AddGroupbox({
+        Name = "Script Control",
+        Side = 1
+    })
+
+    local function UnloadScript()
+        ScriptEnabled = false
+        Aimbot.Enabled = false
+        FOVring:Remove()
+        SetChamsEnabled(false)
+        for unused, highlight in ipairs(AllHighlights) do
+            if highlight and highlight.Parent then
+                highlight:Destroy()
+            end
+        end
+        SetFullbrightEnabled(false)
+        SetCustomTimeEnabled(false)
+        SetHitboxExpanderEnabled(false)
+        flying = false
+        Fly.Enabled = false
+        if HRP then HRP.Anchored = false end
+        if Humanoid then
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+        end
+        destroyGhosts()
+        for unused, conn in ipairs(AllConnections) do
+            if conn then pcall(function() conn:Disconnect() end) end
+        end
+        for unused, drawing in ipairs(AllDrawings) do
+            if drawing then pcall(function() drawing:Remove() end) end
+        end
+        if Library and Library.ScreenGui then
+            Library.ScreenGui:Destroy()
+        end
+        table.clear(AllConnections)
+        table.clear(AllDrawings)
+        table.clear(AllHighlights)
+        pcall(function()
+            getgenv().Toggles = nil
+            getgenv().Options = nil
+        end)
     end
-})
-UnloadBind = Options and Options.UnloadBind or nil
+
+    UnloadGroup:AddButton("Unload Script", UnloadScript)
+
+    UnloadGroup:AddLabel("Unload bind"):AddBinder("UnloadBind", {
+        Text = "Unload",
+        Default = "Delete",
+        Modes = { "Toggle" },
+        Mode = "Toggle",
+        Callback = function(state)
+            if not state then
+                return
+            end
+
+            UnloadScript()
+
+            local opt = Options and Options.UnloadBind
+            if opt then
+                opt.Toggled = false
+                opt:Update()
+            end
+        end
+    })
+    UnloadBind = Options and Options.UnloadBind or nil
 
     if SaveManager then
         SaveManager:SetLibrary(Library)
@@ -1785,4 +1799,6 @@ UnloadBind = Options and Options.UnloadBind or nil
         end
     end))
 end
---xru
+
+print ("xru15 - UI setup done")
+print ("Script fully loaded successfully!")
