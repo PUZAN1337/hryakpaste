@@ -31,16 +31,46 @@ end
 
 print ("пиздец1")
 
-local Library, Toggles, Options = loadstring(game:HttpGet(dec(encoded_lib1)))()
-local SaveManager = loadstring(game:HttpGet(dec(encoded_lib2)))()
-local ThemeManager = loadstring(game:HttpGet(dec(encoded_lib3)))()
+local Library, Toggles, Options
+local success, result = pcall(function()
+    return loadstring(game:HttpGet(dec(encoded_lib1)))()
+end)
+if success then
+    Library, Toggles, Options = result
+else
+    warn("Failed to load Library: " .. tostring(result))
+end
+
+local SaveManager
+success, result = pcall(function()
+    return loadstring(game:HttpGet(dec(encoded_lib2)))()
+end)
+if success then
+    SaveManager = result
+else
+    warn("Failed to load SaveManager: " .. tostring(result))
+end
+
+local ThemeManager
+success, result = pcall(function()
+    return loadstring(game:HttpGet(dec(encoded_lib3)))()
+end)
+if success then
+    ThemeManager = result
+else
+    warn("Failed to load ThemeManager: " .. tostring(result))
+end
 
 if SaveManager and SaveManager.SetOptionsTEMP then
-    SaveManager:SetOptionsTEMP(Options, Toggles)
+    pcall(function()
+        SaveManager:SetOptionsTEMP(Options, Toggles)
+    end)
 end
 
 if ThemeManager and ThemeManager.SetOptionsTEMP then
-    ThemeManager:SetOptionsTEMP(Options, Toggles)
+    pcall(function()
+        ThemeManager:SetOptionsTEMP(Options, Toggles)
+    end)
 end
 
 -- end
