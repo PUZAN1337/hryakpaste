@@ -35,33 +35,84 @@ print ("getgenv defined")
 print ("пиздец1")
 
 local Library, Toggles, Options
-local success, result = pcall(function()
-    return loadstring(game:HttpGet(dec(encoded_lib1)))()
-end)
-if success then
-    Library, Toggles, Options = result
-else
-    warn("Failed to load Library: " .. tostring(result))
+do
+    local url = dec(encoded_lib1)
+    print("Loading Library from: " .. url)
+    local success, content = pcall(function() return game:HttpGet(url) end)
+    if not success then
+        warn("Failed to get Library content: " .. tostring(content))
+    elseif not content then
+        warn("Library content is nil")
+    else
+        local success2, loadFunc = pcall(function() return loadstring(content) end)
+        if not success2 then
+            warn("Failed to loadstring Library: " .. tostring(loadFunc))
+        elseif not loadFunc then
+            warn("loadstring returned nil for Library")
+        else
+            local success3, result = pcall(loadFunc)
+            if success3 then
+                Library, Toggles, Options = result
+                print("Library loaded successfully")
+            else
+                warn("Failed to execute Library: " .. tostring(result))
+            end
+        end
+    end
 end
 
 local SaveManager
-success, result = pcall(function()
-    return loadstring(game:HttpGet(dec(encoded_lib2)))()
-end)
-if success then
-    SaveManager = result
-else
-    warn("Failed to load SaveManager: " .. tostring(result))
+do
+    local url = dec(encoded_lib2)
+    print("Loading SaveManager from: " .. url)
+    local success, content = pcall(function() return game:HttpGet(url) end)
+    if not success then
+        warn("Failed to get SaveManager content: " .. tostring(content))
+    elseif not content then
+        warn("SaveManager content is nil")
+    else
+        local success2, loadFunc = pcall(function() return loadstring(content) end)
+        if not success2 then
+            warn("Failed to loadstring SaveManager: " .. tostring(loadFunc))
+        elseif not loadFunc then
+            warn("loadstring returned nil for SaveManager")
+        else
+            local success3, result = pcall(loadFunc)
+            if success3 then
+                SaveManager = result
+                print("SaveManager loaded successfully")
+            else
+                warn("Failed to execute SaveManager: " .. tostring(result))
+            end
+        end
+    end
 end
 
 local ThemeManager
-success, result = pcall(function()
-    return loadstring(game:HttpGet(dec(encoded_lib3)))()
-end)
-if success then
-    ThemeManager = result
-else
-    warn("Failed to load ThemeManager: " .. tostring(result))
+do
+    local url = dec(encoded_lib3)
+    print("Loading ThemeManager from: " .. url)
+    local success, content = pcall(function() return game:HttpGet(url) end)
+    if not success then
+        warn("Failed to get ThemeManager content: " .. tostring(content))
+    elseif not content then
+        warn("ThemeManager content is nil")
+    else
+        local success2, loadFunc = pcall(function() return loadstring(content) end)
+        if not success2 then
+            warn("Failed to loadstring ThemeManager: " .. tostring(loadFunc))
+        elseif not loadFunc then
+            warn("loadstring returned nil for ThemeManager")
+        else
+            local success3, result = pcall(loadFunc)
+            if success3 then
+                ThemeManager = result
+                print("ThemeManager loaded successfully")
+            else
+                warn("Failed to execute ThemeManager: " .. tostring(result))
+            end
+        end
+    end
 end
 
 if SaveManager and SaveManager.SetOptionsTEMP then
