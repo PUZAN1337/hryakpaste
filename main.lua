@@ -22,6 +22,9 @@ local encoded_lib2 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLW
 local encoded_lib3 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
 
 -- xru
+
+print ("b64 decoded")
+
 local getgenv = getgenv or function()
     return _G
 end
@@ -1705,3 +1708,4 @@ AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end))
 --xru
+print ("main loaded")
