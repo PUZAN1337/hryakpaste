@@ -1,6 +1,7 @@
 print ("xru0")
 
 loadstring (game:HttpGet("https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_main.lua"))()
+print ("xru")
 loadstring (game:HttpGet("https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_save.lua"))()
 loadstring (game:HttpGet("https://raw.githubusercontent.com/PUZAN1337/hryakpaste/refs/heads/main/library_theme.lua"))()
 
