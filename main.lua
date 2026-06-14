@@ -227,7 +227,7 @@ local function UpdateAimbotPlayerCache()
     if not ScriptEnabled then return end
     local newTargets = {}
     
-    for _, player in ipairs(Players:GetPlayers()) do
+    for unused, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local char = player.Character
             if char then
@@ -250,7 +250,7 @@ local function UpdateAimbotNPCCache()
     if not ScriptEnabled then return end
     local newTargets = {}
 
-    for _, model in ipairs(workspace:GetDescendants()) do
+    for unused, model in ipairs(workspace:GetDescendants()) do
         if model:IsA("Model") then
             local humanoid = model:FindFirstChildOfClass("Humanoid")
             if humanoid and humanoid.Health > 0 then
@@ -258,7 +258,7 @@ local function UpdateAimbotNPCCache()
                     continue
                 end
                 local isPlayerChar = false
-                for _, player in ipairs(Players:GetPlayers()) do
+                for unused, player in ipairs(Players:GetPlayers()) do
                     if player.Character == model then
                         isPlayerChar = true
                         break
@@ -355,7 +355,7 @@ local function GetBestAimPartForCharacter(targetCharacter)
     local bestPart = nil
     local bestScore = math.huge
 
-    for _, partName in ipairs(AimbotHitboxNames) do
+    for unused, partName in ipairs(AimbotHitboxNames) do
         local part = FindCharacterPart(targetCharacter, partName)
         if part then
             local screenPos, onScreen = Camera:WorldToScreenPoint(part.Position)
@@ -388,7 +388,7 @@ local function GetBestTarget()
     local preferred = Aimbot.PreferredHitbox
     local center = Camera.ViewportSize / 2
 
-    for _, target in ipairs(AimbotCache.playerTargets) do
+    for unused, target in ipairs(AimbotCache.playerTargets) do
         local char = target.char
         local humanoid = target.humanoid
         if char and humanoid and humanoid.Health > 0 then
@@ -411,7 +411,7 @@ local function GetBestTarget()
     end
 
     if Aimbot.AimNPC then
-        for _, target in ipairs(AimbotCache.npcTargets) do
+        for unused, target in ipairs(AimbotCache.npcTargets) do
             local char = target.char
             local humanoid = target.humanoid
             if char and humanoid and humanoid.Health > 0 then
@@ -537,7 +537,7 @@ local function ApplyChamsMaterial(character, color)
         ChamsTracked[character] = tracked
     end
 
-    for _, obj in ipairs(character:GetDescendants()) do
+    for unused, obj in ipairs(character:GetDescendants()) do
         if obj:IsA("BasePart") then
             local original = tracked[obj]
             if not original then
@@ -619,7 +619,7 @@ local function RemoveChamsFromPlayer(plr)
 end
 
 local function UpdateChams()
-    for _, plr in ipairs(Players:GetPlayers()) do
+    for unused, plr in ipairs(Players:GetPlayers()) do
         ApplyChamsToPlayer(plr)
     end
 end
@@ -636,7 +636,7 @@ local function SetChamsEnabled(state)
             ChamsConnection:Disconnect()
             ChamsConnection = nil
         end
-        for _, plr in ipairs(Players:GetPlayers()) do
+        for unused, plr in ipairs(Players:GetPlayers()) do
             RemoveChamsFromPlayer(plr)
         end
     end
@@ -850,7 +850,7 @@ local function ApplyHitboxesForCharacter(character)
         HitboxTracked[character] = tracked
     end
 
-    for _, partName in ipairs(HitboxExpanderPartNames) do
+    for unused, partName in ipairs(HitboxExpanderPartNames) do
         local selected = HitboxExpander.Parts[partName] == true
         local part = character:FindFirstChild(partName)
         if part and part:IsA("BasePart") then
@@ -902,7 +902,7 @@ local function UpdateHitboxExpander()
         return
     end
 
-    for _, plr in ipairs(Players:GetPlayers()) do
+    for unused, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local char = plr.Character
             if char then
@@ -929,7 +929,7 @@ local function SetHitboxExpanderEnabled(state)
         for character, _ in pairs(HitboxTracked) do
             table.insert(characters, character)
         end
-        for _, character in ipairs(characters) do
+        for unused, character in ipairs(characters) do
             if character then
                 RestoreHitboxesForCharacter(character)
             end
@@ -1019,7 +1019,7 @@ local function SetCharacterNoclipEnabled(state)
             return
         end
         flyNoclipTracked = {}
-        for _, obj in ipairs(Character:GetDescendants()) do
+        for unused, obj in ipairs(Character:GetDescendants()) do
             if obj:IsA("BasePart") then
                 flyNoclipTracked[obj] = {
                     CanCollide = obj.CanCollide,
@@ -1419,7 +1419,7 @@ ChamsGroup:AddToggle("ChamsApplyMaterial", {
     Callback = function(value)
         Chams.ApplyMaterial = value
         if not value then
-            for _, plr in ipairs(Players:GetPlayers()) do
+            for unused, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= LocalPlayer and plr.Character then
                     RestoreChamsMaterial(plr.Character)
                 end
@@ -1624,7 +1624,7 @@ local function UnloadScript()
     Aimbot.Enabled = false
     FOVring:Remove()
     SetChamsEnabled(false)
-    for _, highlight in ipairs(AllHighlights) do
+    for unused, highlight in ipairs(AllHighlights) do
         if highlight and highlight.Parent then
             highlight:Destroy()
         end
@@ -1641,10 +1641,10 @@ local function UnloadScript()
         Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
     end
     destroyGhosts()
-    for _, conn in ipairs(AllConnections) do
+    for unused, conn in ipairs(AllConnections) do
         if conn then pcall(function() conn:Disconnect() end) end
     end
-    for _, drawing in ipairs(AllDrawings) do
+    for unused, drawing in ipairs(AllDrawings) do
         if drawing then pcall(function() drawing:Remove() end) end
     end
     if Library and Library.ScreenGui then

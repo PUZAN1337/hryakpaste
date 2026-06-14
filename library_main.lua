@@ -107,7 +107,7 @@ function Library:SafeCallback(f, ...)
     local success, event = pcall(f, ...);
 
     if not success then
-        local _, i = event:find(":%d+: ");
+        local unused, i = event:find(":%d+: ");
 
         if not i then
             return Library:Notify(event);
@@ -301,7 +301,7 @@ function Library:IsMouseOverFrame(Frame)
 end;
 
 function Library:UpdateDependencyBoxes()
-    for _, Depbox in next, Library.DependencyBoxes do
+    for unused, Depbox in next, Library.DependencyBoxes do
         Depbox:Update();
     end;
 end;
@@ -1132,7 +1132,7 @@ do
             });
 
             function ModeButton:Select()
-                for _, Button in next, ModeButtons do
+                for unused, Button in next, ModeButtons do
                     Button:Deselect();
                 end;
 
@@ -1182,7 +1182,7 @@ do
             local YSize = 0
             local XSize = 0
 
-            for _, Label in next, Library.KeybindContainer:GetChildren() do
+            for unused, Label in next, Library.KeybindContainer:GetChildren() do
                 if Label:IsA('TextLabel') and Label.Visible then
                     YSize = YSize + 18;
                     if (Label.TextBounds.X > XSize) then
@@ -1970,7 +1970,7 @@ do
             Toggle.Value = Bool;
             Toggle:Display();
 
-            for _, Addon in next, Toggle.Addons do
+            for unused, Addon in next, Toggle.Addons do
                 if Addon.Type == 'KeyPicker' and Addon.SyncToggleState then
                     Addon.Toggled = Bool
                     Addon:Update()
@@ -2250,7 +2250,7 @@ do
             Groupbox:AddBlank(3);
         end
 
-        for _, Element in next, Container:GetChildren() do
+        for unused, Element in next, Container:GetChildren() do
             if not Element:IsA('UIListLayout') then
                 RelativeOffset = RelativeOffset + Element.Size.Y.Offset;
             end;
@@ -2422,7 +2422,7 @@ do
             local Values = Dropdown.Values;
             local Buttons = {};
 
-            for _, Element in next, Scrolling:GetChildren() do
+            for unused, Element in next, Scrolling:GetChildren() do
                 if not Element:IsA('UIListLayout') then
                     Element:Destroy();
                 end;
@@ -2508,7 +2508,7 @@ do
                                     Dropdown.Value = nil;
                                 end;
 
-                                for _, OtherButton in next, Buttons do
+                                for unused, OtherButton in next, Buttons do
                                     OtherButton:UpdateButton();
                                 end;
                             end;
@@ -2619,7 +2619,7 @@ do
                 table.insert(Defaults, Idx)
             end
         elseif type(Info.Default) == 'table' then
-            for _, Value in next, Info.Default do
+            for unused, Value in next, Info.Default do
                 local Idx = table.find(Dropdown.Values, Value)
                 if Idx then
                     table.insert(Defaults, Idx)
@@ -2695,7 +2695,7 @@ do
         end);
 
         function Depbox:Update()
-            for _, Dependency in next, Depbox.Dependencies do
+            for unused, Dependency in next, Depbox.Dependencies do
                 local Elem = Dependency[1];
                 local Value = Dependency[2];
 
@@ -2711,7 +2711,7 @@ do
         end;
 
         function Depbox:SetupDependencies(Dependencies)
-            for _, Dependency in next, Dependencies do
+            for unused, Dependency in next, Dependencies do
                 assert(type(Dependency) == 'table', 'SetupDependencies: Dependency is not of type `table`.');
                 assert(Dependency[1], 'SetupDependencies: Dependency is missing element argument.');
                 assert(Dependency[2] ~= nil, 'SetupDependencies: Dependency is missing value argument.');
@@ -3215,14 +3215,14 @@ function Library:CreateWindow(...)
             Parent = RightSide;
         });
 
-        for _, Side in next, { LeftSide, RightSide } do
+        for unused, Side in next, { LeftSide, RightSide } do
             Side:WaitForChild('UIListLayout'):GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
                 Side.CanvasSize = UDim2.fromOffset(0, Side.UIListLayout.AbsoluteContentSize.Y);
             end);
         end;
 
         function Tab:ShowTab()
-            for _, Tab in next, Window.Tabs do
+            for unused, Tab in next, Window.Tabs do
                 Tab:HideTab();
             end;
 
@@ -3316,7 +3316,7 @@ function Library:CreateWindow(...)
             function Groupbox:Resize()
                 local Size = 0;
 
-                for _, Element in next, Groupbox.Container:GetChildren() do
+                for unused, Element in next, Groupbox.Container:GetChildren() do
                     if (not Element:IsA('UIListLayout')) and Element.Visible then
                         Size = Size + Element.Size.Y.Offset;
                     end;
@@ -3460,7 +3460,7 @@ function Library:CreateWindow(...)
                 });
 
                 function Tab:Show()
-                    for _, Tab in next, Tabbox.Tabs do
+                    for unused, Tab in next, Tabbox.Tabs do
                         Tab:Hide();
                     end;
 
@@ -3484,11 +3484,11 @@ function Library:CreateWindow(...)
                 function Tab:Resize()
                     local TabCount = 0;
 
-                    for _, Tab in next, Tabbox.Tabs do
+                    for unused, Tab in next, Tabbox.Tabs do
                         TabCount = TabCount + 1;
                     end;
 
-                    for _, Button in next, TabboxButtons:GetChildren() do
+                    for unused, Button in next, TabboxButtons:GetChildren() do
                         if not Button:IsA('UIListLayout') then
                             Button.Size = UDim2.new(1 / TabCount, 0, 1, 0);
                         end;
@@ -3500,7 +3500,7 @@ function Library:CreateWindow(...)
 
                     local Size = 0;
 
-                    for _, Element in next, Tab.Container:GetChildren() do
+                    for unused, Element in next, Tab.Container:GetChildren() do
                         if (not Element:IsA('UIListLayout')) and Element.Visible then
                             Size = Size + Element.Size.Y.Offset;
                         end;
@@ -3626,7 +3626,7 @@ function Library:CreateWindow(...)
             end);
         end;
 
-        for _, Desc in next, Outer:GetDescendants() do
+        for unused, Desc in next, Outer:GetDescendants() do
             local Properties = {};
 
             if Desc:IsA('ImageLabel') then
@@ -3647,7 +3647,7 @@ function Library:CreateWindow(...)
                 TransparencyCache[Desc] = Cache;
             end;
 
-            for _, Prop in next, Properties do
+            for unused, Prop in next, Properties do
                 if not Cache[Prop] then
                     Cache[Prop] = Desc[Prop];
                 end;
@@ -3687,7 +3687,7 @@ end;
 local function OnPlayerChange()
     local PlayerList = GetPlayersString();
 
-    for _, Value in next, Options do
+    for unused, Value in next, Options do
         if Value.Type == 'Dropdown' and Value.SpecialType == 'Player' then
             Value:SetValues(PlayerList);
         end;

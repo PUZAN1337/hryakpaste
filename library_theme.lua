@@ -170,7 +170,7 @@ local ThemeManager = {} do
 		local theme = {}
 		local fields = { "FontColor", "MainColor", "AccentColor", "BackgroundColor", "OutlineColor" }
 
-		for _, field in next, fields do
+		for unused, field in next, fields do
 			theme[field] = Options[field].Value:ToHex()
 		end
 

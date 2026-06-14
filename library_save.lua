@@ -74,7 +74,7 @@ local SaveManager = {} do
 	}
 
 	function SaveManager:SetIgnoreIndexes(list)
-		for _, key in next, list do
+		for unused, key in next, list do
 			self.Ignore[key] = true
 		end
 	end
@@ -128,7 +128,7 @@ local SaveManager = {} do
 		local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
 		if not success then return false, 'decode error' end
 
-		for _, option in next, decoded.objects do
+		for unused, option in next, decoded.objects do
 			if self.Parser[option.type] then
 				task.spawn(function() self.Parser[option.type].Load(option.idx, option) end) -- task.spawn() so the config loading wont get stuck.
 			end
