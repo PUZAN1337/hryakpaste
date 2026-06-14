@@ -1,4 +1,5 @@
 print ("xru0")
+
 loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_main.lua")()
 loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_save.lua")()
 loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_theme.lua")()
