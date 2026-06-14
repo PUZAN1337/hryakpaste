@@ -2,9 +2,13 @@ loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_main.lua")
 loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_save.lua")
 loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_theme.lua")
 
+print (xru1)
+
 local getgenv = getgenv or function()
     return _G
 end
+
+print (xru2)
 
 local Library, Toggles, Options
 do
@@ -31,6 +35,10 @@ do
     end
 end
 
+print (xru3)
+
+
+
 local SaveManager
 do
     local url = dec(encoded_lib2)
@@ -55,6 +63,8 @@ do
         end
     end
 end
+
+print (xru4)
 
 local ThemeManager
 do
@@ -82,17 +92,23 @@ do
     end
 end
 
+print (xru5)
+
 if SaveManager and SaveManager.SetOptionsTEMP then
     pcall(function()
         SaveManager:SetOptionsTEMP(Options, Toggles)
     end)
 end
 
+print (xru6)
+
 if ThemeManager and ThemeManager.SetOptionsTEMP then
     pcall(function()
         ThemeManager:SetOptionsTEMP(Options, Toggles)
     end)
 end
+
+print (xru7)
 
 -- end
 
