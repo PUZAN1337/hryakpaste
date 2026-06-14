@@ -15,12 +15,14 @@ local function dec(data)
         return string.char(c)
     end))
 end
+print ("dec function defined")
 -- ===============================================
 
 -- b64
 local encoded_lib1 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfbWFpbi5sdWE="
 local encoded_lib2 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfc2F2ZS5sdWE="
 local encoded_lib3 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
+print ("encoded libs defined")
 
 -- xru
 print ("b64 decoded")
@@ -28,6 +30,7 @@ print ("b64 decoded")
 local getgenv = getgenv or function()
     return _G
 end
+print ("getgenv defined")
 
 print ("пиздец1")
 
@@ -1305,168 +1308,169 @@ end))
 
 print ("xru4")
 
-local Window = Library:CreateWindow({
-    Title = "HRYAK.HACK",
-    Center = true,
-    AutoShow = true,
-    ToggleKey = Enum.KeyCode.Insert
-})
+if Library then
+    local Window = Library:CreateWindow({
+        Title = "HRYAK.HACK",
+        Center = true,
+        AutoShow = true,
+        ToggleKey = Enum.KeyCode.Insert
+    })
 
-local AimbotTab = Window:AddTab("Aimbot")
+    local AimbotTab = Window:AddTab("Aimbot")
 
-local AimbotMain = AimbotTab:AddGroupbox({
-    Name = "Main",
-    Side = 1
-})
+    local AimbotMain = AimbotTab:AddGroupbox({
+        Name = "Main",
+        Side = 1
+    })
 
-AimbotMain:AddToggle("AimbotEnabled", {
-    Text = "Enabled",
-    Default = false,
-    Callback = function(value)
-        Aimbot.Enabled = value
-        if value then
-            UpdateAimbotPlayerCache()
-            if Aimbot.AimNPC then
-                UpdateAimbotNPCCache()
+    AimbotMain:AddToggle("AimbotEnabled", {
+        Text = "Enabled",
+        Default = false,
+        Callback = function(value)
+            Aimbot.Enabled = value
+            if value then
+                UpdateAimbotPlayerCache()
+                if Aimbot.AimNPC then
+                    UpdateAimbotNPCCache()
+                end
             end
         end
-    end
-})
+    })
 
-AimbotMain:AddToggle("AimbotTeamCheck", {
-    Text = "Team Check",
-    Default = true,
-    Callback = function(value)
-        Aimbot.TeamCheck = value
-    end
-})
+    AimbotMain:AddToggle("AimbotTeamCheck", {
+        Text = "Team Check",
+        Default = true,
+        Callback = function(value)
+            Aimbot.TeamCheck = value
+        end
+    })
 
-AimbotMain:AddToggle("AimbotNPC", {
-    Text = "Aim at NPCs",
-    Default = true,
-    Callback = function(value)
-        Aimbot.AimNPC = value
-    end
-})
+    AimbotMain:AddToggle("AimbotNPC", {
+        Text = "Aim at NPCs",
+        Default = true,
+        Callback = function(value)
+            Aimbot.AimNPC = value
+        end
+    })
 
-AimbotMain:AddToggle("AimbotOnlyVisible", {
-    Text = "Only if visible",
-    Default = false,
-    Callback = function(value)
-        Aimbot.OnlyVisible = value
-    end
-})
+    AimbotMain:AddToggle("AimbotOnlyVisible", {
+        Text = "Only if visible",
+        Default = false,
+        Callback = function(value)
+            Aimbot.OnlyVisible = value
+        end
+    })
 
-AimbotMain:AddToggle("AimbotShowFOV", {
-    Text = "Show FOV Circle",
-    Default = true,
-    Callback = function(value)
-        Aimbot.ShowFOV = value
-    end
-})
+    AimbotMain:AddToggle("AimbotShowFOV", {
+        Text = "Show FOV Circle",
+        Default = true,
+        Callback = function(value)
+            Aimbot.ShowFOV = value
+        end
+    })
 
-local AimbotSettings = AimbotTab:AddGroupbox({
-    Name = "Settings",
-    Side = 2
-})
+    local AimbotSettings = AimbotTab:AddGroupbox({
+        Name = "Settings",
+        Side = 2
+    })
 
-AimbotSettings:AddSlider("AimbotFOV", {
-    Text = "FOV",
-    Min = 10,
-    Max = 500,
-    Default = 100,
-    Rounding = 0,
-    Callback = function(value)
-        Aimbot.FOV = value
-    end
-})
+    AimbotSettings:AddSlider("AimbotFOV", {
+        Text = "FOV",
+        Min = 10,
+        Max = 500,
+        Default = 100,
+        Rounding = 0,
+        Callback = function(value)
+            Aimbot.FOV = value
+        end
+    })
 
-AimbotSettings:AddSlider("AimbotSmoothing", {
-    Text = "Smoothing",
-    Min = 0.01,
-    Max = 1,
-    Default = 0.1,
-    Rounding = 2,
-    Callback = function(value)
-        Aimbot.Smoothing = value
-    end
-})
+    AimbotSettings:AddSlider("AimbotSmoothing", {
+        Text = "Smoothing",
+        Min = 0.01,
+        Max = 1,
+        Default = 0.1,
+        Rounding = 2,
+        Callback = function(value)
+            Aimbot.Smoothing = value
+        end
+    })
 
-AimbotSettings:AddDropdown("AimbotHitbox", {
-    Text = "Preferred Hitbox",
-    Values = AimbotHitboxNames,
-    Default = Aimbot.PreferredHitbox,
-    Callback = function(value)
-        Aimbot.PreferredHitbox = value
-    end
-})
+    AimbotSettings:AddDropdown("AimbotHitbox", {
+        Text = "Preferred Hitbox",
+        Values = AimbotHitboxNames,
+        Default = Aimbot.PreferredHitbox,
+        Callback = function(value)
+            Aimbot.PreferredHitbox = value
+        end
+    })
 
-AimbotSettings:AddLabel("Aim bind"):AddBinder("AimbotAimBind", {
-    Text = "Aimbot Aim",
-    Default = "MB2",
-    Mode = "Hold",
-})
-AimbotAimBind = Options and Options.AimbotAimBind or nil
+    AimbotSettings:AddLabel("Aim bind"):AddBinder("AimbotAimBind", {
+        Text = "Aimbot Aim",
+        Default = "MB2",
+        Mode = "Hold",
+    })
+    AimbotAimBind = Options and Options.AimbotAimBind or nil
 
-AimbotSettings:AddLabel("FOV Color"):AddColorPicker("AimbotFOVColor", {
-    Default = Aimbot.FOVColor,
-    Title = "FOV Color",
-    Callback = function(value)
-        Aimbot.FOVColor = value
-    end
-})
+    AimbotSettings:AddLabel("FOV Color"):AddColorPicker("AimbotFOVColor", {
+        Default = Aimbot.FOVColor,
+        Title = "FOV Color",
+        Callback = function(value)
+            Aimbot.FOVColor = value
+        end
+    })
 
-local VisualsTab = Window:AddTab("Visuals")
+    local VisualsTab = Window:AddTab("Visuals")
 
-local ChamsGroup = VisualsTab:AddGroupbox({
-    Name = "Chams",
-    Side = 1
-})
+    local ChamsGroup = VisualsTab:AddGroupbox({
+        Name = "Chams",
+        Side = 1
+    })
 
-ChamsGroup:AddToggle("ChamsEnabled", {
-    Text = "Enabled",
-    Default = false,
-    Callback = function(value)
-        SetChamsEnabled(value)
-    end
-})
+    ChamsGroup:AddToggle("ChamsEnabled", {
+        Text = "Enabled",
+        Default = false,
+        Callback = function(value)
+            SetChamsEnabled(value)
+        end
+    })
 
-ChamsGroup:AddToggle("ChamsWallhack", {
-    Text = "Wallhack",
-    Default = true,
-    Callback = function(value)
-        Chams.Wallhack = value
-    end
-})
+    ChamsGroup:AddToggle("ChamsWallhack", {
+        Text = "Wallhack",
+        Default = true,
+        Callback = function(value)
+            Chams.Wallhack = value
+        end
+    })
 
-ChamsGroup:AddToggle("ChamsTeamColor", {
-    Text = "Use Team Color",
-    Default = false,
-    Callback = function(value)
-        Chams.TeamColor = value
-    end
-})
+    ChamsGroup:AddToggle("ChamsTeamColor", {
+        Text = "Use Team Color",
+        Default = false,
+        Callback = function(value)
+            Chams.TeamColor = value
+        end
+    })
 
-ChamsGroup:AddSlider("ChamsTransparency", {
-    Text = "Transparency",
-    Min = 0,
-    Max = 1,
-    Default = 0.5,
-    Rounding = 2,
-    Callback = function(value)
-        Chams.Transparency = value
-    end
-})
+    ChamsGroup:AddSlider("ChamsTransparency", {
+        Text = "Transparency",
+        Min = 0,
+        Max = 1,
+        Default = 0.5,
+        Rounding = 2,
+        Callback = function(value)
+            Chams.Transparency = value
+        end
+    })
 
-ChamsGroup:AddLabel("Chams Color"):AddColorPicker("ChamsColor", {
-    Default = Chams.Color,
-    Title = "Chams Color",
-    Callback = function(value)
-        Chams.Color = value
-    end
-})
+    ChamsGroup:AddLabel("Chams Color"):AddColorPicker("ChamsColor", {
+        Default = Chams.Color,
+        Title = "Chams Color",
+        Callback = function(value)
+            Chams.Color = value
+        end
+    })
 
-ChamsGroup:AddToggle("ChamsApplyMaterial", {
+    ChamsGroup:AddToggle("ChamsApplyMaterial", {
     Text = "Apply Material",
     Default = true,
     Callback = function(value)
@@ -1735,27 +1739,32 @@ UnloadGroup:AddLabel("Unload bind"):AddBinder("UnloadBind", {
 })
 UnloadBind = Options and Options.UnloadBind or nil
 
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind"})
-SaveManager:SetFolder("PuzoExploit/config")
-SaveManager:BuildConfigSection(SettingsTab)
-SaveManager:LoadAutoloadConfig()
+    if SaveManager then
+        SaveManager:SetLibrary(Library)
+        SaveManager:IgnoreThemeSettings()
+        SaveManager:SetIgnoreIndexes({"MenuKeybind"})
+        SaveManager:SetFolder("PuzoExploit/config")
+        SaveManager:BuildConfigSection(SettingsTab)
+        SaveManager:LoadAutoloadConfig()
+    end
 
-ThemeManager:SetLibrary(Library)
-ThemeManager:SetFolder("PuzoExploit/theme")
-ThemeManager:ApplyToTab(SettingsTab)
+    if ThemeManager then
+        ThemeManager:SetLibrary(Library)
+        ThemeManager:SetFolder("PuzoExploit/theme")
+        ThemeManager:ApplyToTab(SettingsTab)
+    end
 
-AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then
-        return
-    end
-    if UnloadBind then
-        return
-    end
-    if input.KeyCode == Enum.KeyCode.Delete then
-        UnloadScript()
-    end
-end))
+    AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then
+            return
+        end
+        if UnloadBind then
+            return
+        end
+        if input.KeyCode == Enum.KeyCode.Delete then
+            UnloadScript()
+        end
+    end))
+end
 --xru
-print ("main loaded")
+print ("main fully loaded successfully")
