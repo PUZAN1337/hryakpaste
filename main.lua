@@ -1,3 +1,4 @@
+print ("b64 dcd strtd")
 --mega b64 decode
 local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 local function dec(data)
