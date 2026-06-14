@@ -1,43 +1,14 @@
-print ("b64 dcd strtd")
---mega b64 decode
-local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-local function dec(data)
-    data = string.gsub(data, '[^'..b..'=]', '')
-    return (data:gsub('.', function(x)
-        if (x == '=') then return '' end
-        local r,f='',(b:find(x)-1)
-        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
-        return r;
-    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
-        if (#x ~= 8) then return '' end
-        local c=0
-        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
-        return string.char(c)
-    end))
-end
-print ("dec function defined")
--- ===============================================
-
--- b64
-local encoded_lib1 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfbWFpbi5sdWE="
-local encoded_lib2 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfc2F2ZS5sdWE="
-local encoded_lib3 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
-print ("encoded libs defined")
-
--- xru
-print ("b64 decoded")
+loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_main.lua")
+loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_save.lua")
+loadstring("https://github.com/PUZAN1337/hryakpaste/blob/main/library_theme.lua")
 
 local getgenv = getgenv or function()
     return _G
 end
-print ("getgenv defined")
-
-print ("пиздец1")
 
 local Library, Toggles, Options
 do
     local url = dec(encoded_lib1)
-    print("Loading Library from: " .. url)
     local success, content = pcall(function() return game:HttpGet(url) end)
     if not success then
         warn("Failed to get Library content: " .. tostring(content))
@@ -53,7 +24,6 @@ do
             local success3, result = pcall(loadFunc)
             if success3 then
                 Library, Toggles, Options = result
-                print("Library loaded successfully")
             else
                 warn("Failed to execute Library: " .. tostring(result))
             end
@@ -64,7 +34,6 @@ end
 local SaveManager
 do
     local url = dec(encoded_lib2)
-    print("Loading SaveManager from: " .. url)
     local success, content = pcall(function() return game:HttpGet(url) end)
     if not success then
         warn("Failed to get SaveManager content: " .. tostring(content))
@@ -80,7 +49,6 @@ do
             local success3, result = pcall(loadFunc)
             if success3 then
                 SaveManager = result
-                print("SaveManager loaded successfully")
             else
                 warn("Failed to execute SaveManager: " .. tostring(result))
             end
@@ -91,7 +59,6 @@ end
 local ThemeManager
 do
     local url = dec(encoded_lib3)
-    print("Loading ThemeManager from: " .. url)
     local success, content = pcall(function() return game:HttpGet(url) end)
     if not success then
         warn("Failed to get ThemeManager content: " .. tostring(content))
@@ -107,7 +74,7 @@ do
             local success3, result = pcall(loadFunc)
             if success3 then
                 ThemeManager = result
-                print("ThemeManager loaded successfully")
+
             else
                 warn("Failed to execute ThemeManager: " .. tostring(result))
             end
@@ -128,8 +95,6 @@ if ThemeManager and ThemeManager.SetOptionsTEMP then
 end
 
 -- end
-
-print ("пиздец2")
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -152,8 +117,6 @@ local function AddConnection(conn)
     return conn
 end
 
-print ("пиздец3")
-
 local function AddDrawing(drawing)
     if drawing then
         table.insert(AllDrawings, drawing)
@@ -175,8 +138,6 @@ local AntiAFK = {
 }
 
 local AntiAFKConnection = nil
-
-print ("пиздец4")
 
 local function TryHookWalkDummy()
     if AntiAFK.HookedWalkDummy then
@@ -207,8 +168,6 @@ local function TryHookWalkDummy()
     return hooked
 end
 
-print ("пиздец5")
-
 local function SetAntiAFKEnabled(state)
     AntiAFK.Enabled = state
 
@@ -236,8 +195,6 @@ local function SetAntiAFKEnabled(state)
         AntiAFKConnection = nil
     end
 end
-
-print ("пиздец6")
 
 local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
     local r, g, b = defaultColor.R * 255, defaultColor.G * 255, defaultColor.B * 255
@@ -287,8 +244,6 @@ local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
         end
     }
 end
-
-print ("xru1")
 
 local Aimbot = {
     Enabled = false,
@@ -617,8 +572,6 @@ AddConnection(Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
     FOVring.Position = Camera.ViewportSize / 2
 end))
 
-print ("xru2")
-
 local Chams = {
     Enabled = false,
     Color = Color3.fromRGB(255, 0, 0),
@@ -860,8 +813,6 @@ local function SetCustomTimeValue(value)
         ApplyWorldLighting()
     end
 end
-
-print ("xru3")
 
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
@@ -1357,8 +1308,6 @@ AddConnection(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     flyOriginalAutoRotate = nil
 end))
 
-print ("xru4")
-
 if Library then
     local Window = Library:CreateWindow({
         Title = "HRYAK.HACK",
@@ -1818,4 +1767,3 @@ UnloadBind = Options and Options.UnloadBind or nil
     end))
 end
 --xru
-print ("main fully loaded successfully")
