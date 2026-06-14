@@ -29,6 +29,8 @@ local getgenv = getgenv or function()
     return _G
 end
 
+print ("пиздец1")
+
 local Library, Toggles, Options = loadstring(game:HttpGet(dec(encoded_lib1)))()
 local SaveManager = loadstring(game:HttpGet(dec(encoded_lib2)))()
 local ThemeManager = loadstring(game:HttpGet(dec(encoded_lib3)))()
@@ -42,6 +44,8 @@ if ThemeManager and ThemeManager.SetOptionsTEMP then
 end
 
 -- end
+
+print ("пиздец2")
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -64,6 +68,8 @@ local function AddConnection(conn)
     return conn
 end
 
+print ("пиздец3")
+
 local function AddDrawing(drawing)
     if drawing then
         table.insert(AllDrawings, drawing)
@@ -85,6 +91,8 @@ local AntiAFK = {
 }
 
 local AntiAFKConnection = nil
+
+print ("пиздец4")
 
 local function TryHookWalkDummy()
     if AntiAFK.HookedWalkDummy then
@@ -115,6 +123,8 @@ local function TryHookWalkDummy()
     return hooked
 end
 
+print ("пиздец5")
+
 local function SetAntiAFKEnabled(state)
     AntiAFK.Enabled = state
 
@@ -142,6 +152,8 @@ local function SetAntiAFKEnabled(state)
         AntiAFKConnection = nil
     end
 end
+
+print ("пиздец6")
 
 local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
     local r, g, b = defaultColor.R * 255, defaultColor.G * 255, defaultColor.B * 255
