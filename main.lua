@@ -23,7 +23,6 @@ local encoded_lib2 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLW
 local encoded_lib3 = "aHR0cHM6Ly9naXRodWIuY29tL3JuaXZhc291dGFtaW5hbGlsbWlubDBsLWxhbmcvaHJ5YWtwYXN0ZS9yYXcvcmVmcy9oZWFkcy9tYWluL2xpYnJhcnlfdGhlbWUubHVh"
 
 -- xru
-
 print ("b64 decoded")
 
 local getgenv = getgenv or function()
@@ -192,6 +191,8 @@ local function AddColorPickerAlternative(groupbox, name, defaultColor, callback)
         end
     }
 end
+
+print ("xru1")
 
 local Aimbot = {
     Enabled = false,
@@ -520,6 +521,8 @@ AddConnection(Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
     FOVring.Position = Camera.ViewportSize / 2
 end))
 
+print ("xru2")
+
 local Chams = {
     Enabled = false,
     Color = Color3.fromRGB(255, 0, 0),
@@ -761,6 +764,8 @@ local function SetCustomTimeValue(value)
         ApplyWorldLighting()
     end
 end
+
+print ("xru3")
 
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
@@ -1255,6 +1260,8 @@ AddConnection(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     flyOriginalPlatformStand = nil
     flyOriginalAutoRotate = nil
 end))
+
+print ("xru4")
 
 local Window = Library:CreateWindow({
     Title = "HRYAK.HACK",
