@@ -261,5 +261,3 @@ for i,v in pairs(({"Internal","HttpCache","Instances","Signals","Script","Physic
     memorystats.restore(v)
 end
 return ThemeManager
-
-print ("theme loaded")
