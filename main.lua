@@ -867,8 +867,8 @@ local function ApplyHitboxesForCharacter(character)
                 end
 
                 part.Size = original.Size * HitboxExpander.Scale
-                part.CanCollide = false
-                part.CanTouch = false
+                part.CanCollide = true
+                part.CanTouch = true
                 part.Massless = original.Massless
             else
                 local original = tracked[part]
