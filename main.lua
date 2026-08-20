@@ -772,7 +772,7 @@ local flying = false
 local speed = Fly.Speed
 local keys = {
     W = false, A = false, S = false, D = false,
-    Space = false, LeftShift = false,
+    E = false, LeftShift = false,
 }
 
 local blueGhost = nil
@@ -1171,7 +1171,7 @@ AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     elseif input.KeyCode == Enum.KeyCode.A then keys.A = true
     elseif input.KeyCode == Enum.KeyCode.S then keys.S = true
     elseif input.KeyCode == Enum.KeyCode.D then keys.D = true
-    elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = true
+    elseif input.KeyCode == Enum.KeyCode.e then keys.e = true
     elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = true
     end
 end))
@@ -1182,7 +1182,7 @@ AddConnection(UserInputService.InputEnded:Connect(function(input, gameProcessed)
     elseif input.KeyCode == Enum.KeyCode.A then keys.A = false
     elseif input.KeyCode == Enum.KeyCode.S then keys.S = false
     elseif input.KeyCode == Enum.KeyCode.D then keys.D = false
-    elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = false
+    elseif input.KeyCode == Enum.KeyCode.E then keys.E = false
     elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = false
     end
 end))
@@ -1213,7 +1213,7 @@ AddConnection(RunService.RenderStepped:Connect(function(dt)
         if keys.S then moveDirection = moveDirection - lookVector end
         if keys.A then moveDirection = moveDirection - rightVector end
         if keys.D then moveDirection = moveDirection + rightVector end
-        if keys.Space then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
+        if keys.E then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
         if keys.LeftShift then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 
         if blueGhost then
