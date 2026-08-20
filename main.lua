@@ -1171,7 +1171,7 @@ AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     elseif input.KeyCode == Enum.KeyCode.A then keys.A = true
     elseif input.KeyCode == Enum.KeyCode.S then keys.S = true
     elseif input.KeyCode == Enum.KeyCode.D then keys.D = true
-    elseif input.KeyCode == Enum.KeyCode.E then keys.e = true
+    elseif input.KeyCode == Enum.KeyCode.Space then keys.E = true
     elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = true
     end
 end))
@@ -1182,7 +1182,7 @@ AddConnection(UserInputService.InputEnded:Connect(function(input, gameProcessed)
     elseif input.KeyCode == Enum.KeyCode.A then keys.A = false
     elseif input.KeyCode == Enum.KeyCode.S then keys.S = false
     elseif input.KeyCode == Enum.KeyCode.D then keys.D = false
-    elseif input.KeyCode == Enum.KeyCode.E then keys.E = false
+    elseif input.KeyCode == Enum.KeyCode.Space then keys.E = false
     elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = false
     end
 end))
