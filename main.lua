@@ -1546,7 +1546,7 @@ FlyGroup:AddToggle("FlyTeleportMode", {
 FlyGroup:AddSlider("FlySpeed", {
     Text = "Speed",
     Min = 10,
-    Max = 200,
+    Max = 600,
     Default = 80,
     Rounding = 0,
     Callback = function(value)
